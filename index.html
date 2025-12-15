@@ -1,0 +1,2289 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>TripBook - ITZY Seoul 2026</title>
+
+  <!-- Tailwind (CDN) -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            ink: "#0f172a",
+            soft: "#f8fafc",
+            card: "rgba(255,255,255,0.92)",
+            baby: "#9ec5ff",
+            baby2: "#cfe3ff",
+            bluegray: "#5b6b84",
+            lavender: "#d8d0ff"
+          },
+          boxShadow: {
+            soft: "0 10px 30px rgba(15, 23, 42, 0.08)",
+            insetSoft: "inset 0 1px 0 rgba(255,255,255,.55)"
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Vue 3 -->
+  <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+
+  <!-- SortableJS (drag reorder with delay) -->
+  <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+
+  <!-- Day.js -->
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+
+  <!-- 字體：先用 Noto Sans TC（你要源泉圓體我下面有保留 GenSenRoundedTW 的 font-family 名稱） -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    :root{
+      /* 更藍灰、少白一點 */
+      --bg1:#eef3fb;
+      --bg2:#dee8f8;
+      --line: rgba(91,107,132,.22);
+      --ring: rgba(158,197,255,.45);
+    }
+    html,body{ height:100%; }
+    body{
+      font-family: "GenSenRoundedTW", "Noto Sans TC", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1200px 800px at 20% 0%, var(--bg2), transparent 60%),
+                  radial-gradient(900px 700px at 90% 10%, rgba(216,208,255,.45), transparent 55%),
+                  linear-gradient(180deg, var(--bg1), #f7faff);
+      color:#0f172a;
+    }
+    .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 84px); }
+    .glass { background: rgba(225,235,250,0.78); backdrop-filter: blur(10px); }
+    .chip { border: 1px solid var(--line); background: rgba(255,255,255,.72); }
+    .btn { border: 1px solid var(--line); }
+    .btnPrimary { background: linear-gradient(180deg, rgba(158,197,255,.95), rgba(158,197,255,.65)); }
+    .btnPrimary:hover{ filter: brightness(0.98); }
+    .input {
+      border: 1px solid var(--line);
+      background: rgba(255,255,255,.82);
+      outline: none;
+    }
+    .input:focus{ box-shadow: 0 0 0 4px var(--ring); }
+    .segActive{
+      background: linear-gradient(180deg, rgba(207,227,255,.95), rgba(207,227,255,.65));
+      border-color: rgba(158,197,255,.55);
+    }
+    .hint { color: rgba(91,107,132,.9); }
+    .mono { font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+
+<body>
+<div id="app" class="min-h-screen">
+  <!-- Top -->
+  <header class="sticky top-0 z-40">
+    <div class="glass border-b" style="border-color: var(--line);">
+      <div class="max-w-[460px] mx-auto px-4 py-3 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-2xl shadow-soft overflow-hidden bg-white border" style="border-color: var(--line);">
+            <img v-if="activeTrip?.avatar" :src="activeTrip.avatar" class="w-full h-full object-cover" alt="">
+            <div v-else class="w-full h-full grid place-items-center text-bluegray">🧳</div>
+          </div>
+          <div>
+            <div class="text-[13px] hint">{{ nowText }}</div>
+            <div class="font-bold tracking-tight text-[15px]">
+              {{ activeTrip ? activeTrip.title : "我的行程目錄" }}
+            </div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <!-- ✅ 直接回目錄（不用進設定） -->
+          <button v-if="activeTrip"
+                  class="btn rounded-xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white shadow-insetSoft"
+                  @click="backToCatalog()">
+            🏠 回目錄
+          </button>
+          <button class="btn rounded-xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white shadow-insetSoft"
+                  @click="openTripCatalog=true">
+            📚 目錄
+          </button>
+          <button v-if="activeTrip" class="btn rounded-xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white shadow-insetSoft"
+                  @click="openTripSettings=true">
+            ⚙️ 設定
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="max-w-[460px] mx-auto px-4 pt-4 safe-bottom">
+    <!-- If no trip selected -> catalog -->
+    <section v-if="!activeTrip">
+      <div class="rounded-3xl p-4 bg-card shadow-soft border" style="border-color: var(--line);">
+        <div class="flex items-center justify-between">
+          <div>
+            <div class="font-bold text-[16px]">📌 選擇行程</div>
+            <div class="text-[13px] hint mt-1">點卡片就直接進入（不用另外開啟）</div>
+          </div>
+          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                  @click="startCreateTrip()">
+            ➕ 新增行程
+          </button>
+        </div>
+
+        <div class="mt-4 grid gap-3">
+          <button v-for="t in store.trips" :key="t.id"
+                  class="text-left rounded-3xl p-4 bg-white/70 hover:bg-white border shadow-soft"
+                  style="border-color: var(--line);"
+                  @click="selectTrip(t.id)">
+            <div class="flex gap-3 items-center">
+              <div class="w-12 h-12 rounded-2xl overflow-hidden border bg-white" style="border-color: var(--line);">
+                <img v-if="t.avatar" :src="t.avatar" class="w-full h-full object-cover" alt="">
+                <div v-else class="w-full h-full grid place-items-center">🧊</div>
+              </div>
+              <div class="min-w-0 flex-1">
+                <div class="font-bold truncate">{{ t.title }}</div>
+                <div class="text-[13px] hint mt-0.5">
+                  📅 {{ t.startDate }} → {{ t.endDate }} · 👥 {{ t.people.length }} 人 · 💱 {{ t.currencies.length }} 幣別
+                </div>
+              </div>
+              <div class="text-[20px]">›</div>
+            </div>
+          </button>
+
+          <div v-if="store.trips.length===0" class="text-center py-10 hint">
+            還沒有行程～先新增一個吧 ✨
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trip Home (Tabs) -->
+    <section v-else>
+      <!-- Countdown -->
+      <div class="rounded-3xl p-4 bg-card shadow-soft border" style="border-color: var(--line);">
+        <div class="flex items-start justify-between gap-3">
+          <div>
+            <div class="font-bold text-[16px]">⏳ 離出發還有</div>
+            <div class="mt-1 text-[34px] font-extrabold tracking-tight mono">
+              {{ daysUntil(activeTrip.startDate) }} 天
+            </div>
+            <div class="text-[13px] hint">（以 {{ activeTrip.startDate }} 為出發日）</div>
+          </div>
+          <div class="text-right">
+            <div class="text-[13px] hint">📍 預設城市</div>
+            <div class="font-semibold">{{ activeTrip.city || "Seoul" }}</div>
+            <button class="btn rounded-xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white mt-2"
+                    @click="tab='weather'">
+              ☁️ 看天氣
+            </button>
+          </div>
+        </div>
+
+        <!-- ✅ 航班：一進行程就看到（可用於其他旅行） -->
+        <div class="mt-4" v-if="(activeTrip.flights||[]).length">
+          <div class="flex items-center justify-between">
+            <div class="font-bold text-[16px]">✈️ 航班</div>
+            <button class="btn rounded-xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+                    @click="openTripSettings=true">
+              ⚙️ 管理
+            </button>
+          </div>
+          <div class="mt-2 grid gap-2">
+            <div v-for="f in activeTrip.flights" :key="f.id"
+                 class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                 style="border-color: var(--line);">
+              <div class="text-[12px] hint">{{ f.type || "航班" }} · {{ f.date || "" }}</div>
+              <div class="mt-1 font-bold">{{ f.depAirport || "—" }} → {{ f.arrAirport || "—" }}</div>
+              <div class="mt-1 text-[13px] hint mono">{{ f.depTime || "—" }} → {{ f.arrTime || "—" }}</div>
+              <div class="mt-1 text-[13px] hint" v-if="f.flightNo">航班：{{ f.flightNo }}</div>
+              <div class="mt-1 text-[13px]" v-if="f.note">📝 {{ f.note }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tabs -->
+      <div class="mt-4 rounded-3xl p-2 bg-white/65 border shadow-soft sticky top-[72px] z-30"
+           style="border-color: var(--line);">
+        <div class="grid grid-cols-6 gap-2 text-[12px]">
+          <button @click="tab='plan'" :class="segClass('plan')" class="rounded-2xl py-2 px-2 btn">
+            🗓️ 行程
+          </button>
+          <button @click="tab='money'" :class="segClass('money')" class="rounded-2xl py-2 px-2 btn">
+            💸 記帳
+          </button>
+          <button @click="tab='luggage'" :class="segClass('luggage')" class="rounded-2xl py-2 px-2 btn">
+            🎒 行李
+          </button>
+          <button @click="tab='fav'" :class="segClass('fav')" class="rounded-2xl py-2 px-2 btn">
+            ⭐ 收藏
+          </button>
+          <button @click="tab='shop'" :class="segClass('shop')" class="rounded-2xl py-2 px-2 btn">
+            🛍️ 代購
+          </button>
+          <button @click="tab='info'" :class="segClass('info')" class="rounded-2xl py-2 px-2 btn">
+            📌 資訊
+          </button>
+        </div>
+      </div>
+
+      <!-- Panels -->
+      <div class="mt-4">
+        <!-- 行程 -->
+        <section v-show="tab==='plan'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <!-- Day scroller -->
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between">
+                <div class="font-bold text-[16px]">🗓️ 每日行程</div>
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                        @click="openAddPlanItem()">
+                  ➕ 新增
+                </button>
+              </div>
+
+              <div class="mt-3 flex gap-2 overflow-x-auto pb-2">
+                <button v-for="d in tripDays(activeTrip)" :key="d"
+                        @click="activeDay=d; $nextTick(()=>mountSortable())"
+                        class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border shadow-insetSoft"
+                        :class="activeDay===d ? 'segActive' : 'bg-white/70 hover:bg-white'"
+                        style="border-color: var(--line);">
+                  <div class="font-semibold">{{ md(d) }}</div>
+                  <div class="text-[11px] hint">{{ dow(d) }}</div>
+                </button>
+              </div>
+            </div>
+
+            <!-- list -->
+            <div class="p-4">
+              <div class="text-[13px] hint">👆 長按 0.2 秒即可拖曳排序（滑動觀看沒問題）</div>
+
+              <div class="mt-3" v-if="(activeTrip.itinerary[activeDay]||[]).length===0">
+                <div class="rounded-2xl p-4 border bg-white/65 text-center hint" style="border-color: var(--line);">
+                  這天還沒安排～按右上角 ➕ 新增 ✨
+                </div>
+              </div>
+
+              <div class="mt-3 space-y-3" :id="'planList-'+activeDay">
+                <div v-for="item in (activeTrip.itinerary[activeDay]||[])" :key="item.id"
+                     class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                     style="border-color: var(--line);">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="flex items-center gap-2">
+                        <div class="text-[12px] px-2 py-1 rounded-xl chip">
+                          {{ item.time || "（未填時間）" }}
+                        </div>
+                        <div class="text-[12px] px-2 py-1 rounded-xl chip">
+                          {{ item.category || "未分類" }}
+                        </div>
+                      </div>
+                      <div class="mt-2 font-bold text-[16px] break-words">{{ item.title || "（未填標題）" }}</div>
+                      <div class="mt-1 text-[13px] hint break-words" v-if="item.place">📍 {{ item.place }}</div>
+                      <div class="mt-2 text-[13px] break-words" v-if="item.note">📝 {{ item.note }}</div>
+
+                      <div class="mt-2 flex flex-wrap gap-2" v-if="item.link || item.map">
+                        <a v-if="item.link" :href="item.link" target="_blank"
+                           class="text-[12px] underline decoration-baby/60">
+                          🔗 網址
+                        </a>
+                        <a v-if="item.map" :href="item.map" target="_blank"
+                           class="text-[12px] underline decoration-lavender/60">
+                          🗺️ 地圖
+                        </a>
+                      </div>
+
+                      <div class="mt-3 grid grid-cols-3 gap-2" v-if="(item.images||[]).length">
+                        <img v-for="(img,idx) in item.images" :key="idx" :src="img"
+                             class="w-full aspect-square object-cover rounded-2xl border"
+                             style="border-color: var(--line);" />
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 shrink-0">
+                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                              @click="editPlanItem(item)">
+                        ✏️
+                      </button>
+                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                              @click="removePlanItem(item.id)">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 記帳 -->
+        <section v-show="tab==='money'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between gap-3">
+                <div>
+                  <div class="font-bold text-[16px]">💸 記帳</div>
+                  <div class="text-[13px] hint mt-1">多幣別可新增；最後統一折算台幣</div>
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+                          @click="openCurrencyManager=true">
+                    💱 匯率
+                  </button>
+                  <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                          @click="openAddExpense()">
+                    ➕ 新增
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-4 rounded-3xl p-4 bg-white/70 border shadow-soft" style="border-color: var(--line);">
+                <div class="text-[13px] hint">總花費（折台幣）</div>
+                <div class="mt-1 text-[34px] font-extrabold mono">NT$ {{ money(totalExpenseTWD()) }}</div>
+                <div class="mt-1 text-[13px] hint">
+                  本日：NT$ {{ money(dayTotalTWD(selectedExpenseDay)) }} ·
+                  選日：{{ selectedExpenseDay || "全部" }}
+                </div>
+              </div>
+
+              <!-- ✅ 個人累積（含頭像） -->
+              <div class="mt-4 rounded-3xl p-4 bg-white/70 border shadow-soft" style="border-color: var(--line);">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-[16px]">👥 個人累積</div>
+                  <div class="text-[12px] hint">依分攤折台幣</div>
+                </div>
+                <div class="mt-3 grid gap-2">
+                  <div v-for="p in personTotals()" :key="'pt-'+p.pid"
+                       class="flex items-center gap-3 rounded-2xl p-3 border bg-white/70"
+                       style="border-color: var(--line);">
+                    <div class="w-10 h-10 rounded-2xl overflow-hidden border bg-white" style="border-color: var(--line);">
+                      <img v-if="p.avatar" :src="p.avatar" class="w-full h-full object-cover" alt="">
+                      <div v-else class="w-full h-full grid place-items-center">🙂</div>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold truncate">{{ p.name }}</div>
+                      <div class="text-[12px] hint">已分攤：NT$ {{ money(p.total) }}</div>
+                    </div>
+                    <div class="font-extrabold mono">NT$ {{ money(p.total) }}</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- day filter -->
+              <div class="mt-3 flex items-center gap-2 overflow-x-auto pb-2">
+                <button class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+                        :class="selectedExpenseDay==='' ? 'segActive':'bg-white/70 hover:bg-white'"
+                        style="border-color: var(--line);"
+                        @click="selectedExpenseDay=''">
+                  全部
+                </button>
+                <button v-for="d in tripDays(activeTrip)" :key="'ed-'+d"
+                        class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+                        :class="selectedExpenseDay===d ? 'segActive':'bg-white/70 hover:bg-white'"
+                        style="border-color: var(--line);"
+                        @click="selectedExpenseDay=d">
+                  {{ md(d) }}
+                </button>
+              </div>
+            </div>
+
+            <!-- expense list -->
+            <div class="p-4">
+              <div v-if="filteredExpenses().length===0" class="rounded-2xl p-4 border bg-white/65 text-center hint"
+                   style="border-color: var(--line);">
+                還沒有記帳～按右上角 ➕ 新增 ✨
+              </div>
+
+              <div class="space-y-3">
+                <div v-for="e in filteredExpenses()" :key="e.id"
+                     class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                     style="border-color: var(--line);">
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="min-w-0">
+                      <div class="text-[12px] hint mono">📅 {{ e.date }} · {{ e.category || "未分類" }} · {{ e.method || "現金" }}</div>
+                      <div class="mt-1 font-bold text-[16px] break-words">{{ e.title || "（未填項目）" }}</div>
+                      <div class="mt-1 text-[13px] hint break-words" v-if="e.place">📍 {{ e.place }}</div>
+
+                      <div class="mt-2 flex flex-wrap gap-2">
+                        <span class="text-[12px] px-2 py-1 rounded-xl chip">
+                          金額：{{ e.currency }} {{ money(e.amount) }}
+                        </span>
+                        <span class="text-[12px] px-2 py-1 rounded-xl chip">
+                          約 NT$ {{ money(e.amountTWD) }}
+                        </span>
+                        <span class="text-[12px] px-2 py-1 rounded-xl chip">
+                          由 {{ personName(e.paidBy) }} 支付
+                        </span>
+                        <span class="text-[12px] px-2 py-1 rounded-xl chip">
+                          分攤 {{ e.splitAmong.length }} 人
+                          <span v-if="hasCustomSplit(e)"> · 含自訂</span>
+                          <span v-else> · 平均 NT$ {{ money(e.amountTWD / Math.max(1,e.splitAmong.length)) }}</span>
+                        </span>
+                      </div>
+
+                      <div class="mt-2 text-[13px] break-words" v-if="e.note">📝 {{ e.note }}</div>
+
+                      <div class="mt-3" v-if="e.receipt">
+                        <img :src="e.receipt" class="w-full max-h-56 object-cover rounded-2xl border"
+                             style="border-color: var(--line);" />
+                      </div>
+                    </div>
+
+                    <div class="flex flex-col gap-2 shrink-0">
+                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                              @click="editExpense(e)">
+                        ✏️
+                      </button>
+                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                              @click="removeExpense(e.id)">
+                        🗑️
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- settlement -->
+              <div class="mt-5 rounded-3xl p-4 bg-white/70 border shadow-soft" style="border-color: var(--line);">
+                <div class="flex items-center justify-between">
+                  <!-- ✅ 刪掉「誰欠誰」三個字 -->
+                  <div class="font-bold text-[16px]">🧾 結餘</div>
+                  <div class="text-[12px] hint">依折台幣計算</div>
+                </div>
+                <div class="mt-3 grid gap-2">
+                  <div v-for="(line,idx) in settlementLines()" :key="'st-'+idx"
+                       class="rounded-2xl p-3 border bg-white/70"
+                       style="border-color: var(--line);">
+                    {{ line }}
+                  </div>
+                  <div v-if="settlementLines().length===0" class="text-center hint py-4">
+                    目前剛好都打平 ✨
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 行李 -->
+        <section v-show="tab==='luggage'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between">
+                <div>
+                  <div class="font-bold text-[16px]">🎒 行李清單</div>
+                  <div class="text-[13px] hint mt-1">可新增項目；刪除改成紅色「－」</div>
+                </div>
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                        @click="openAddLuggage()">
+                  ➕ 新增
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 space-y-4">
+              <div v-for="cat in luggageCategories()" :key="cat" class="rounded-3xl p-4 bg-white/70 border"
+                   style="border-color: var(--line);">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold">📦 {{ cat }}</div>
+                  <div class="text-[12px] hint">
+                    {{ luggageItems(cat).filter(i=>i.done).length }}/{{ luggageItems(cat).length }}
+                  </div>
+                </div>
+
+                <div class="mt-3 space-y-2">
+                  <div v-for="it in luggageItems(cat)" :key="it.id"
+                       class="flex items-center gap-2 rounded-2xl p-2 border bg-white/70"
+                       style="border-color: var(--line);">
+                    <input type="checkbox" v-model="it.done" @change="persist()"
+                           class="w-5 h-5 accent-blue-500" />
+                    <div class="flex-1 min-w-0">
+                      <div class="font-semibold truncate">{{ it.name }}</div>
+                      <div class="text-[12px] hint" v-if="it.note">📝 {{ it.note }}</div>
+                    </div>
+                    <button class="w-9 h-9 rounded-2xl grid place-items-center border bg-white/70 hover:bg-white"
+                            style="border-color: var(--line); color: #ef4444;"
+                            @click="removeLuggage(it.id)">
+                      －
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+        <!-- 收藏 -->
+        <section v-show="tab==='fav'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-[16px]">⭐ 收藏</div>
+                  <div class="text-[13px] hint mt-1">分類可新增；以「地區」自動分組</div>
+                </div>
+                <div class="flex gap-2">
+                  <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+                          @click="openFavCategoryManager=true">
+                    🏷️ 類型
+                  </button>
+                  <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                          @click="openAddFav()">
+                    ➕ 新增
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-3 flex gap-2 overflow-x-auto pb-2">
+                <button class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+                        :class="favFilter==='' ? 'segActive':'bg-white/70 hover:bg-white'"
+                        style="border-color: var(--line);"
+                        @click="favFilter=''">
+                  全部
+                </button>
+                <button v-for="c in activeTrip.favCategories" :key="'fc-'+c"
+                        class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+                        :class="favFilter===c ? 'segActive':'bg-white/70 hover:bg-white'"
+                        style="border-color: var(--line);"
+                        @click="favFilter=c">
+                  {{ c }}
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4">
+              <div v-if="filteredFav().length===0" class="rounded-2xl p-4 border bg-white/65 text-center hint"
+                   style="border-color: var(--line);">
+                還沒有收藏～看到想去的就先丟進來 ✨
+              </div>
+
+              <div class="space-y-4">
+                <div v-for="group in favGroupedByArea()" :key="group.area"
+                     class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+                  <div class="flex items-center justify-between">
+                    <div class="font-bold">📍 {{ group.area }}</div>
+                    <div class="text-[12px] hint">{{ group.items.length }} 筆</div>
+                  </div>
+
+                  <div class="mt-3 space-y-3">
+                    <div v-for="it in group.items" :key="it.id"
+                         class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                         style="border-color: var(--line);">
+                      <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                          <div class="text-[12px] hint">🏷️ {{ it.category || "未分類" }} · 👤 {{ it.buyer || "—" }}</div>
+                          <div class="mt-1 font-bold text-[16px] break-words">{{ it.name || "（未填名稱）" }}</div>
+                          <div class="mt-2 flex flex-wrap gap-2">
+                            <span class="text-[12px] px-2 py-1 rounded-xl chip">數量：{{ it.qty || 1 }}</span>
+                            <span class="text-[12px] px-2 py-1 rounded-xl chip" v-if="it.price">
+                              價格：{{ it.currency || "KRW" }} {{ money(it.price) }}
+                            </span>
+                            <span class="text-[12px] px-2 py-1 rounded-xl chip" v-if="it.place">
+                              地點：{{ it.place }}
+                            </span>
+                          </div>
+                          <div class="mt-2 text-[13px] break-words" v-if="it.note">📝 {{ it.note }}</div>
+                          <div class="mt-2" v-if="it.link">
+                            <a :href="it.link" target="_blank" class="text-[12px] underline decoration-baby/60">🔗 連結</a>
+                          </div>
+                          <div class="mt-3" v-if="it.image">
+                            <img :src="it.image" class="w-full max-h-56 object-cover rounded-2xl border"
+                                 style="border-color: var(--line);" />
+                          </div>
+                        </div>
+
+                        <div class="flex flex-col gap-2 shrink-0">
+                          <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                                  @click="editFav(it)">
+                            ✏️
+                          </button>
+                          <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                                  @click="removeFav(it.id)">
+                            🗑️
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 代購/購物 -->
+        <section v-show="tab==='shop'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-[16px]">🛍️ 購物 / 代購清單</div>
+                  <div class="text-[13px] hint mt-1">可放商品、數量、價格、購買人、備註</div>
+                </div>
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                        @click="openAddShop()">
+                  ➕ 新增
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 space-y-3">
+              <div v-if="activeTrip.shop.length===0" class="rounded-2xl p-4 border bg-white/65 text-center hint"
+                   style="border-color: var(--line);">
+                清單空空～先把想買的放進來 ✨
+              </div>
+
+              <div v-for="it in activeTrip.shop" :key="it.id"
+                   class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                   style="border-color: var(--line);">
+                <div class="flex items-start justify-between gap-3">
+                  <div class="min-w-0">
+                    <div class="text-[12px] hint">👤 {{ it.buyer || "—" }} · 📍 {{ it.place || "—" }}</div>
+                    <div class="mt-1 font-bold text-[16px] break-words">{{ it.name || "（未填名稱）" }}</div>
+                    <div class="mt-2 flex flex-wrap gap-2">
+                      <span class="text-[12px] px-2 py-1 rounded-xl chip">數量：{{ it.qty || 1 }}</span>
+                      <span class="text-[12px] px-2 py-1 rounded-xl chip" v-if="it.price">
+                        價格：{{ it.currency || "KRW" }} {{ money(it.price) }}
+                      </span>
+                    </div>
+                    <div class="mt-2 text-[13px] break-words" v-if="it.note">📝 {{ it.note }}</div>
+                    <div class="mt-2" v-if="it.link">
+                      <a :href="it.link" target="_blank" class="text-[12px] underline decoration-baby/60">🔗 連結</a>
+                    </div>
+                    <div class="mt-3" v-if="it.image">
+                      <img :src="it.image" class="w-full max-h-56 object-cover rounded-2xl border"
+                           style="border-color: var(--line);" />
+                    </div>
+                  </div>
+
+                  <div class="flex flex-col gap-2 shrink-0">
+                    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                            @click="editShop(it)">
+                      ✏️
+                    </button>
+                    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                            @click="removeShop(it.id)">
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 資訊 -->
+        <section v-show="tab==='info'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-[16px]">📌 固定資訊 & 備忘錄</div>
+                  <div class="text-[13px] hint mt-1">固定資訊先預填；底下可自由新增任何備註（欄位都可空）</div>
+                </div>
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                        @click="openAddNote()">
+                  ➕ 新增備忘
+                </button>
+              </div>
+            </div>
+
+            <div class="p-4 space-y-4">
+              <!-- Fixed info -->
+              <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+                <div class="font-bold text-[15px]">🎤 演唱會</div>
+                <div class="mt-2 text-[13px] space-y-1">
+                  <div>ITZY 3RD WORLD TOUR ＜TUNNEL VISION＞ in SEOUL</div>
+                  <div class="hint">Day1：2026/02/13 19:30 or 20:00 (KST)</div>
+                  <div class="hint">Day2：2026/02/14 18:00 (KST)</div>
+                  <div class="hint">Day3：2026/02/15 17:00 (KST)</div>
+                </div>
+              </div>
+
+              <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+                <div class="font-bold text-[15px]">🏠 住宿</div>
+                <div class="mt-2 text-[13px] space-y-1">
+                  <div class="hint">入住：2026/02/11 → 02/15（四晚）</div>
+                  <div class="hint">地址：서울특별시 강남구 역삼동 619-16（周圍 / 尚未明確門牌）</div>
+                  <a class="text-[12px] underline decoration-baby/60" target="_blank"
+                     href="https://www.airbnb.com.tw/rooms/1318488266686350601?adults=3&check_in=2026-02-11&check_out=2026-02-15&children=0&infants=0&pets=0&wishlist_item_id=11005531884430&source_impression_id=p3_1762490096_P3hggLZkdlP2Ymtq&previous_page_section_name=1000">
+                    🔗 Airbnb 連結
+                  </a>
+                </div>
+              </div>
+
+              <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+                <div class="font-bold text-[15px]">✈️ 航班（詳細）</div>
+                <div class="mt-3 grid gap-3">
+                  <div class="rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+                    <div class="font-semibold">去程｜2026/02/11（三）</div>
+                    <div class="text-[13px] hint mt-1">TPE 桃園機場 T1 12:25（台灣時間）</div>
+                    <div class="text-[13px] hint">→ ICN 仁川機場 T2 15:50（韓國時間）</div>
+                    <div class="text-[12px] hint mt-2">建議：出發前 2.5–3 小時到機場（看你行李/報到狀況）</div>
+                  </div>
+                  <div class="rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+                    <div class="font-semibold">回程｜2026/02/16（一）</div>
+                    <div class="text-[13px] hint mt-1">ICN 仁川機場 T2 09:00（韓國時間）</div>
+                    <div class="text-[13px] hint">→ TPE 桃園機場 T1 11:00（台灣時間）</div>
+                    <div class="text-[12px] hint mt-2">提醒：這班很早，前一晚行李先收好比較舒服 😴</div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Notes -->
+              <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+                <div class="flex items-center justify-between">
+                  <div class="font-bold text-[15px]">📝 自由備忘錄</div>
+                  <div class="text-[12px] hint">{{ activeTrip.notes.length }} 筆</div>
+                </div>
+
+                <div class="mt-3 space-y-3">
+                  <div v-if="activeTrip.notes.length===0" class="rounded-2xl p-4 border bg-white/65 text-center hint"
+                       style="border-color: var(--line);">
+                    先把看到的資訊丟進來～像是「想逛的店 / 突然想到的提醒」✨
+                  </div>
+
+                  <div v-for="n in activeTrip.notes" :key="n.id"
+                       class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                       style="border-color: var(--line);">
+                    <div class="flex items-start justify-between gap-3">
+                      <div class="min-w-0">
+                        <div class="text-[12px] hint mono">
+                          📅 {{ n.date || "（未填日期）" }} · 🕒 {{ n.time || "（未填時間）" }}
+                        </div>
+                        <div class="mt-1 font-bold text-[16px] break-words">{{ n.title || "（未填標題）" }}</div>
+                        <div class="mt-1 text-[13px] hint break-words" v-if="n.place">📍 {{ n.place }}</div>
+                        <div class="mt-2 text-[13px] break-words" v-if="n.note">📝 {{ n.note }}</div>
+
+                        <div class="mt-2 flex flex-wrap gap-2" v-if="n.link || n.map">
+                          <a v-if="n.link" :href="n.link" target="_blank"
+                             class="text-[12px] underline decoration-baby/60">🔗 網址</a>
+                          <a v-if="n.map" :href="n.map" target="_blank"
+                             class="text-[12px] underline decoration-lavender/60">🗺️ 地圖</a>
+                        </div>
+
+                        <div class="mt-3 grid grid-cols-3 gap-2" v-if="(n.images||[]).length">
+                          <img v-for="(img,idx) in n.images" :key="idx" :src="img"
+                               class="w-full aspect-square object-cover rounded-2xl border"
+                               style="border-color: var(--line);" />
+                        </div>
+                      </div>
+
+                      <div class="flex flex-col gap-2 shrink-0">
+                        <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                                @click="editNote(n)">
+                          ✏️
+                        </button>
+                        <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                                @click="removeNote(n.id)">
+                          🗑️
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+
+            </div>
+          </div>
+        </section>
+
+        <!-- 天氣 -->
+        <section v-show="tab==='weather'">
+          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
+            <div class="p-4 border-b" style="border-color: var(--line);">
+              <div class="flex items-center justify-between gap-2">
+                <div>
+                  <div class="font-bold text-[16px]">☁️ 天氣</div>
+                  <div class="text-[13px] hint mt-1">預設 Seoul；也可手動切換城市</div>
+                </div>
+                <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+                        @click="refreshWeather()">
+                  🔄 更新
+                </button>
+              </div>
+
+              <div class="mt-3 flex gap-2">
+                <input class="input rounded-2xl px-3 py-2 w-full text-[13px]"
+                       placeholder="輸入城市（例：Seoul / Tokyo / Osaka）"
+                       v-model="weatherQuery"
+                       @keydown.enter="searchCity()" />
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                        @click="searchCity()">
+                  🔎
+                </button>
+              </div>
+
+              <div class="mt-2 text-[12px] hint" v-if="weatherStatus">{{ weatherStatus }}</div>
+            </div>
+
+            <div class="p-4">
+              <div v-if="weather.current" class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+                   style="border-color: var(--line);">
+                <div class="flex items-center justify-between">
+                  <div>
+                    <div class="font-bold text-[16px]">📍 {{ weather.cityName }}</div>
+                    <div class="text-[13px] hint mt-1">更新：{{ weather.updatedAt }}</div>
+                  </div>
+                  <div class="text-right">
+                    <div class="text-[40px] font-extrabold mono">{{ weather.current.temperature }}°</div>
+                    <div class="text-[12px] hint">風 {{ weather.current.windspeed }} km/h</div>
+                  </div>
+                </div>
+              </div>
+
+              <div v-if="weather.daily?.length" class="mt-4 space-y-2">
+                <div v-for="d in weather.daily" :key="d.date"
+                     class="rounded-2xl p-3 border bg-white/70 flex items-center justify-between"
+                     style="border-color: var(--line);">
+                  <div>
+                    <div class="font-semibold">{{ d.date }}</div>
+                    <div class="text-[12px] hint">{{ d.weekday }}</div>
+                  </div>
+                  <div class="mono font-bold">{{ d.tmax }}° / {{ d.tmin }}°</div>
+                </div>
+              </div>
+
+              <div v-if="!weather.current" class="rounded-2xl p-4 border bg-white/65 text-center hint"
+                   style="border-color: var(--line);">
+                目前還沒有資料～按「更新」或搜尋城市 ✨
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </section>
+  </main>
+
+  <!-- Bottom Nav -->
+  <nav v-if="activeTrip" class="fixed bottom-0 left-0 right-0 z-50">
+    <div class="max-w-[460px] mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
+      <div class="glass rounded-[28px] shadow-soft border p-2 mb-3"
+           style="border-color: var(--line);">
+        <div class="grid grid-cols-6 gap-1 text-[11px]">
+          <button class="rounded-2xl py-2" @click="tab='plan'" :class="tab==='plan'?'segActive':''">🗓️<div>行程</div></button>
+          <button class="rounded-2xl py-2" @click="tab='money'" :class="tab==='money'?'segActive':''">💸<div>記帳</div></button>
+          <button class="rounded-2xl py-2" @click="tab='luggage'" :class="tab==='luggage'?'segActive':''">🎒<div>行李</div></button>
+          <button class="rounded-2xl py-2" @click="tab='fav'" :class="tab==='fav'?'segActive':''">⭐<div>收藏</div></button>
+          <button class="rounded-2xl py-2" @click="tab='shop'" :class="tab==='shop'?'segActive':''">🛍️<div>代購</div></button>
+          <button class="rounded-2xl py-2" @click="tab='info'" :class="tab==='info'?'segActive':''">📌<div>資訊</div></button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Modals -->
+  <!-- Trip catalog modal -->
+  <div v-if="openTripCatalog" class="fixed inset-0 z-[60] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/25" @click="openTripCatalog=false"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-[16px]">📚 行程目錄</div>
+        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openTripCatalog=false">✖</button>
+      </div>
+
+      <div class="mt-3 space-y-3 max-h-[70vh] overflow-auto pr-1">
+        <button class="w-full text-left rounded-3xl p-4 bg-white/70 hover:bg-white border shadow-soft"
+                style="border-color: var(--line);"
+                @click="startCreateTrip()">
+          <div class="font-bold">➕ 新增行程</div>
+          <div class="text-[13px] hint mt-1">建立新的旅遊計畫（可設定頭像/日期/人員/航班）</div>
+        </button>
+
+        <button v-for="t in store.trips" :key="'m-'+t.id"
+                class="w-full text-left rounded-3xl p-4 bg-white/70 hover:bg-white border shadow-soft"
+                style="border-color: var(--line);"
+                @click="selectTrip(t.id); openTripCatalog=false">
+          <div class="flex gap-3 items-center">
+            <div class="w-12 h-12 rounded-2xl overflow-hidden border bg-white" style="border-color: var(--line);">
+              <img v-if="t.avatar" :src="t.avatar" class="w-full h-full object-cover" alt="">
+              <div v-else class="w-full h-full grid place-items-center">🧊</div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <div class="font-bold truncate">{{ t.title }}</div>
+              <div class="text-[13px] hint mt-0.5">📅 {{ t.startDate }} → {{ t.endDate }}</div>
+            </div>
+            <div class="text-[20px]">›</div>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Trip settings -->
+  <div v-if="openTripSettings" class="fixed inset-0 z-[60] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/25" @click="openTripSettings=false"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-[16px]">⚙️ 行程設定</div>
+        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openTripSettings=false">✖</button>
+      </div>
+
+      <div class="mt-4 space-y-3">
+        <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+          <div class="font-semibold">🖼️ 行程頭像</div>
+          <div class="mt-2 flex items-center gap-3">
+            <div class="w-16 h-16 rounded-3xl overflow-hidden border bg-white" style="border-color: var(--line);">
+              <img v-if="activeTrip.avatar" :src="activeTrip.avatar" class="w-full h-full object-cover" alt="">
+              <div v-else class="w-full h-full grid place-items-center">🧊</div>
+            </div>
+            <div class="flex-1">
+              <input type="file" accept="image/*" @change="onPickTripAvatar($event)" class="text-[13px]"/>
+              <div class="text-[12px] hint mt-1">選好會跳出裁切，可調整位置</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+          <div class="font-semibold">📝 名稱 / 日期</div>
+          <div class="mt-2 grid gap-2">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="activeTrip.title" placeholder="行程名稱（例如：首爾 ITZY 三巡）" @input="persist()">
+            <div class="grid grid-cols-2 gap-2">
+              <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="activeTrip.startDate" @change="syncDaysAfterTripEdit()">
+              <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="activeTrip.endDate" @change="syncDaysAfterTripEdit()">
+            </div>
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="activeTrip.city" placeholder="預設城市（Seoul / Tokyo ...）" @input="persist()">
+          </div>
+        </div>
+
+        <!-- ✅ 航班管理 -->
+        <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">✈️ 航班</div>
+            <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                    @click="startAddFlight()">
+              ➕ 新增航班
+            </button>
+          </div>
+
+          <div class="mt-3 grid gap-2">
+            <div v-for="f in (activeTrip.flights||[])" :key="f.id"
+                 class="rounded-2xl p-3 border bg-white/70 flex items-start justify-between gap-2"
+                 style="border-color: var(--line);">
+              <div class="min-w-0">
+                <div class="font-semibold">{{ f.depAirport || "—" }} → {{ f.arrAirport || "—" }}</div>
+                <div class="text-[12px] hint mono">{{ f.type || "航班" }} · {{ f.date || "" }} · {{ f.depTime || "—" }} → {{ f.arrTime || "—" }}</div>
+                <div class="text-[12px] hint" v-if="f.flightNo">航班：{{ f.flightNo }}</div>
+              </div>
+              <div class="flex gap-2">
+                <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                        @click="editFlight(f)">✏️</button>
+                <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                        @click="removeFlight(f.id)">🗑️</button>
+              </div>
+            </div>
+
+            <div v-if="(activeTrip.flights||[]).length===0" class="rounded-2xl p-3 border bg-white/65 text-center hint"
+                 style="border-color: var(--line);">
+              還沒新增航班～按右上角 ➕ 新增 ✨
+            </div>
+          </div>
+        </div>
+
+        <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+          <div class="flex items-center justify-between">
+            <div class="font-semibold">👥 參與人員</div>
+            <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                    @click="startAddPerson()">
+              ➕ 新增人員
+            </button>
+          </div>
+
+          <div class="mt-3 grid gap-2">
+            <div v-for="p in activeTrip.people" :key="p.id"
+                 class="flex items-center gap-3 rounded-2xl p-2 border bg-white/70"
+                 style="border-color: var(--line);">
+              <div class="w-11 h-11 rounded-2xl overflow-hidden border bg-white" style="border-color: var(--line);">
+                <img v-if="p.avatar" :src="p.avatar" class="w-full h-full object-cover" alt="">
+                <div v-else class="w-full h-full grid place-items-center">🙂</div>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="font-semibold truncate">{{ p.name }}</div>
+              </div>
+              <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                      @click="editPerson(p)">
+                ✏️
+              </button>
+              <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                      @click="removePerson(p.id)">
+                🗑️
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex gap-2">
+          <button class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white flex-1"
+                  @click="backToCatalog()">
+            ↩️ 回目錄
+          </button>
+          <button class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white"
+                  style="color:#ef4444;"
+                  @click="deleteTrip(activeTrip.id)">
+            刪除行程
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Currency Manager -->
+  <div v-if="openCurrencyManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/25" @click="openCurrencyManager=false"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between gap-2">
+        <div class="font-bold text-[16px]">💱 匯率設定</div>
+        <div class="flex items-center gap-2">
+          <!-- ✅ 自動抓匯率（仍可手動改） -->
+          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                  @click="autoUpdateRates()">
+            🔄 自動更新
+          </button>
+          <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openCurrencyManager=false">✖</button>
+        </div>
+      </div>
+
+      <div class="mt-3 text-[13px] hint">
+        匯率是「1 單位外幣 = 多少台幣」。例如 KRW 0.0212 表示 ₁₀₀₀ KRW ≈ 21.2 TWD
+      </div>
+
+      <div class="mt-4 space-y-2 max-h-[55vh] overflow-auto pr-1">
+        <div v-for="c in activeTrip.currencies" :key="c.code"
+             class="rounded-2xl p-3 border bg-white/70 flex items-center gap-2"
+             style="border-color: var(--line);">
+          <div class="font-bold w-14">{{ c.code }}</div>
+          <input class="input rounded-2xl px-3 py-2 text-[13px] flex-1"
+                 v-model="c.name" placeholder="名稱（選填）" @input="persist()">
+          <input class="input rounded-2xl px-3 py-2 text-[13px] w-28 mono"
+                 type="number" step="0.000001" v-model.number="c.rateToTWD" @input="persist()">
+          <button v-if="c.code!=='TWD'" class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white"
+                  style="border-color: var(--line); color:#ef4444;"
+                  @click="removeCurrency(c.code)">
+            －
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+        <div class="font-semibold">➕ 新增幣別</div>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="newCur.code" placeholder="代碼(如 JPY)">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="newCur.name" placeholder="名稱(選填)">
+          <input class="input rounded-2xl px-3 py-2 text-[13px] mono" type="number" step="0.000001"
+                 v-model.number="newCur.rateToTWD" placeholder="匯率">
+        </div>
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft mt-3"
+                @click="addCurrency()">
+          新增
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Fav category manager -->
+  <div v-if="openFavCategoryManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/25" @click="openFavCategoryManager=false"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-[16px]">🏷️ 收藏類型</div>
+        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openFavCategoryManager=false">✖</button>
+      </div>
+
+      <div class="mt-4 space-y-2">
+        <div v-for="c in activeTrip.favCategories" :key="'cat-'+c"
+             class="rounded-2xl p-3 border bg-white/70 flex items-center justify-between"
+             style="border-color: var(--line);">
+          <div class="font-semibold">{{ c }}</div>
+          <button class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white"
+                  style="border-color: var(--line); color:#ef4444;"
+                  @click="removeFavCategory(c)">
+            －
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+        <div class="font-semibold">➕ 新增類型</div>
+        <div class="mt-2 flex gap-2">
+          <input class="input rounded-2xl px-3 py-2 text-[13px] flex-1" v-model="newFavCategory" placeholder="例如：拉麵 / 咖啡 / 逛街">
+          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                  @click="addFavCategory()">
+            新增
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Generic editor modal -->
+  <div v-if="editor.open" class="fixed inset-0 z-[70] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/25" @click="closeEditor()"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-[16px]">{{ editor.title }}</div>
+        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="closeEditor()">✖</button>
+      </div>
+
+      <div class="mt-4 space-y-3 max-h-[70vh] overflow-auto pr-1">
+        <!-- plan/note -->
+        <template v-if="editor.type==='plan' || editor.type==='note'">
+          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='note'">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='plan'">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.category" placeholder="分類（例 午餐）">
+          </div>
+
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.title" placeholder="標題（可空）">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.place" placeholder="地點（可空）">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.map" placeholder="地圖連結（可空）">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.link" placeholder="網址（可空）">
+          <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[90px]"
+                    v-model="editor.data.note" placeholder="備註（可空）"></textarea>
+
+          <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+            <div class="font-semibold">🖼️ 圖片（可多張）</div>
+            <input class="mt-2 text-[13px]" type="file" accept="image/*" multiple @change="onAddImagesToEditor($event)">
+            <div class="mt-3 grid grid-cols-3 gap-2" v-if="(editor.data.images||[]).length">
+              <div v-for="(img,idx) in editor.data.images" :key="'ei-'+idx" class="relative">
+                <img :src="img" class="w-full aspect-square object-cover rounded-2xl border" style="border-color: var(--line);">
+                <button class="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-white border shadow-soft grid place-items-center"
+                        style="border-color: var(--line);"
+                        @click="editor.data.images.splice(idx,1)">
+                  ✖
+                </button>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <!-- expense -->
+        <template v-if="editor.type==='expense'">
+          <div class="grid grid-cols-2 gap-2">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.category" placeholder="分類（餐飲/交通…）">
+          </div>
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.title" placeholder="項目（例 拉麵）">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.place" placeholder="地點（可空）">
+
+          <div class="grid grid-cols-2 gap-2">
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.currency">
+              <option v-for="c in activeTrip.currencies" :key="'cur-'+c.code" :value="c.code">{{ c.code }}</option>
+            </select>
+            <input class="input rounded-2xl px-3 py-2 text-[13px] mono" type="number" step="0.01" v-model.number="editor.data.amount" placeholder="金額">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.method">
+              <option value="現金">現金</option>
+              <option value="信用卡">信用卡</option>
+            </select>
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.paidBy">
+              <option v-for="p in activeTrip.people" :key="'pp-'+p.id" :value="p.id">{{ p.name }}</option>
+            </select>
+          </div>
+
+          <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+            <div class="font-semibold">👥 分攤人員</div>
+            <div class="text-[12px] hint mt-1">✅ 可在姓名後輸入「自訂 NT$」；沒填的人會平分剩餘金額</div>
+
+            <div class="mt-3 grid gap-2">
+              <div v-for="p in activeTrip.people" :key="'sp-'+p.id"
+                   class="rounded-2xl p-2 border bg-white/70"
+                   style="border-color: var(--line);">
+                <div class="flex items-center gap-2">
+                  <input type="checkbox" :value="p.id" v-model="editor.data.splitAmong"
+                         class="w-5 h-5 accent-blue-500">
+                  <span class="font-semibold flex-1">{{ p.name }}</span>
+
+                  <!-- ✅ 自訂分攤 -->
+                  <input class="input rounded-2xl px-2 py-1 text-[12px] mono w-28"
+                         type="number" step="1"
+                         :disabled="!editor.data.splitAmong.includes(p.id)"
+                         v-model.number="editor.data.splitCustom[p.id]"
+                         placeholder="自訂NT$" />
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-3 rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+              <div class="text-[13px] hint">
+                預估分攤：{{ previewSplitText(editor.data) }}
+              </div>
+            </div>
+          </div>
+
+          <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[90px]"
+                    v-model="editor.data.note" placeholder="備註（可空）"></textarea>
+
+          <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+            <div class="font-semibold">🧾 收據/照片（可空）</div>
+            <input class="mt-2 text-[13px]" type="file" accept="image/*" @change="onPickReceipt($event)">
+            <div class="mt-3" v-if="editor.data.receipt">
+              <img :src="editor.data.receipt" class="w-full max-h-56 object-cover rounded-2xl border" style="border-color: var(--line);">
+            </div>
+          </div>
+        </template>
+
+        <!-- ✅ flight -->
+        <template v-if="editor.type==='flight'">
+          <div class="grid grid-cols-2 gap-2">
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.type">
+              <option>去程</option>
+              <option>回程</option>
+              <option>其他</option>
+            </select>
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.depAirport" placeholder="出發機場（例 TPE T1）">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.arrAirport" placeholder="抵達機場（例 ICN T2）">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2">
+            <input class="input rounded-2xl px-3 py-2 text-[13px] mono" v-model="editor.data.depTime" placeholder="出發時間（例 12:25）">
+            <input class="input rounded-2xl px-3 py-2 text-[13px] mono" v-model="editor.data.arrTime" placeholder="抵達時間（例 15:50）">
+          </div>
+
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.flightNo" placeholder="航班號（可空）">
+          <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[90px]"
+                    v-model="editor.data.note" placeholder="備註（可空）"></textarea>
+        </template>
+
+        <!-- fav / shop -->
+        <template v-if="editor.type==='fav' || editor.type==='shop'">
+          <div class="grid grid-cols-2 gap-2">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.area" placeholder="地區（例 江南 / 弘大）">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.place" placeholder="購物地點/店名（可空）">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='fav'">
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.category">
+              <option value="">（未分類）</option>
+              <option v-for="c in activeTrip.favCategories" :key="'fop-'+c" :value="c">{{ c }}</option>
+            </select>
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.buyer" placeholder="購買人（可空）">
+          </div>
+
+          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='shop'">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.buyer" placeholder="購買人（可空）">
+            <input class="input rounded-2xl px-3 py-2 text-[13px] mono" type="number" v-model.number="editor.data.qty" placeholder="數量（預設 1）">
+          </div>
+
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.name" placeholder="商品/店名（可空）">
+
+          <div class="grid grid-cols-2 gap-2">
+            <select class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.currency">
+              <option v-for="c in activeTrip.currencies" :key="'fc2-'+c.code" :value="c.code">{{ c.code }}</option>
+            </select>
+            <input class="input rounded-2xl px-3 py-2 text-[13px] mono" type="number" step="0.01"
+                   v-model.number="editor.data.price" placeholder="價格（可空）">
+          </div>
+
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.link" placeholder="網址（可空）">
+          <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[90px]"
+                    v-model="editor.data.note" placeholder="備註（可空）"></textarea>
+
+          <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+            <div class="font-semibold">🖼️ 圖片（可空）</div>
+            <input class="mt-2 text-[13px]" type="file" accept="image/*" @change="onPickSingleImageToEditor($event)">
+            <div class="mt-3" v-if="editor.data.image">
+              <img :src="editor.data.image" class="w-full max-h-56 object-cover rounded-2xl border" style="border-color: var(--line);">
+            </div>
+          </div>
+        </template>
+
+        <!-- luggage add -->
+        <template v-if="editor.type==='luggage'">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.category" placeholder="分類（例 必需品/藥品…）">
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.name" placeholder="項目名稱">
+          <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[80px]"
+                    v-model="editor.data.note" placeholder="備註（可空）"></textarea>
+        </template>
+
+        <!-- person -->
+        <template v-if="editor.type==='person'">
+          <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+            <div class="font-semibold">🙂 人員頭像</div>
+            <div class="mt-2 flex items-center gap-3">
+              <div class="w-16 h-16 rounded-3xl overflow-hidden border bg-white" style="border-color: var(--line);">
+                <img v-if="editor.data.avatar" :src="editor.data.avatar" class="w-full h-full object-cover" alt="">
+                <div v-else class="w-full h-full grid place-items-center">🙂</div>
+              </div>
+              <div class="flex-1">
+                <input type="file" accept="image/*" @change="onPickPersonAvatar($event)" class="text-[13px]"/>
+                <div class="text-[12px] hint mt-1">選好會跳出裁切，立即看到有沒有選到你要的位置</div>
+              </div>
+            </div>
+          </div>
+          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.name" placeholder="名字（必填）">
+        </template>
+      </div>
+
+      <div class="mt-4 flex gap-2">
+        <button class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white flex-1"
+                @click="closeEditor()">
+          取消
+        </button>
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft flex-1"
+                @click="saveEditor()">
+          保存
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Cropper modal -->
+  <div v-if="crop.open" class="fixed inset-0 z-[80] grid place-items-center px-4">
+    <div class="absolute inset-0 bg-black/35" @click="closeCropper(false)"></div>
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+         style="border-color: var(--line);">
+      <div class="flex items-center justify-between">
+        <div class="font-bold text-[16px]">✂️ 裁切照片</div>
+        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="closeCropper(false)">✖</button>
+      </div>
+
+      <div class="mt-4">
+        <div class="text-[13px] hint">拖曳移動、拉桿縮放（會存成方形頭像）</div>
+
+        <div class="mt-3 rounded-3xl border overflow-hidden bg-white shadow-soft"
+             style="border-color: var(--line);">
+          <div class="relative w-full aspect-square bg-slate-50 overflow-hidden"
+               @pointerdown="cropPointerDown"
+               @pointermove="cropPointerMove"
+               @pointerup="cropPointerUp"
+               @pointercancel="cropPointerUp">
+            <img v-if="crop.imgSrc" :src="crop.imgSrc"
+                 class="absolute left-1/2 top-1/2 select-none pointer-events-none"
+                 :style="cropImgStyle()"
+                 draggable="false" />
+            <div class="absolute inset-0 ring-1 ring-white/40"></div>
+          </div>
+        </div>
+
+        <div class="mt-3 flex items-center gap-3">
+          <div class="text-[12px] hint w-10">🔎</div>
+          <input type="range" min="1" max="3" step="0.01" v-model.number="crop.scale" class="w-full">
+          <div class="text-[12px] hint w-12 mono">{{ crop.scale.toFixed(2) }}x</div>
+        </div>
+
+        <div class="mt-4 flex gap-2">
+          <button class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white flex-1"
+                  @click="closeCropper(false)">
+            取消
+          </button>
+          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft flex-1"
+                  @click="closeCropper(true)">
+            使用此裁切
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const { createApp } = Vue;
+
+createApp({
+  data(){
+    return {
+      tab: "plan",
+      nowText: "",
+      store: this.loadStore(),
+
+      openTripCatalog: false,
+      openTripSettings: false,
+      openCurrencyManager: false,
+      openFavCategoryManager: false,
+
+      activeTripId: "",
+      activeDay: "",
+      selectedExpenseDay: "",
+      favFilter: "",
+
+      editor: { open:false, type:"", title:"", data:{}, mode:"new", refId:"" },
+
+      // currencies add
+      newCur: { code:"", name:"", rateToTWD: 1 },
+
+      // fav category add
+      newFavCategory: "",
+
+      // weather
+      weatherQuery: "",
+      weatherStatus: "",
+      weather: { cityName:"", updatedAt:"", current:null, daily:[] },
+
+      // cropper
+      crop: {
+        open:false,
+        imgSrc:"",
+        scale: 1.4,
+        offX: 0,
+        offY: 0,
+        dragging:false,
+        px:0, py:0,
+        callback: null
+      }
+    }
+  },
+  computed:{
+    activeTrip(){
+      return this.store.trips.find(t=>t.id===this.activeTripId) || null;
+    }
+  },
+  mounted(){
+    this.tickNow();
+    setInterval(this.tickNow, 1000*30);
+
+    const last = localStorage.getItem("tripbook_activeTripId_v2");
+    if (last && this.store.trips.some(t=>t.id===last)) {
+      this.activeTripId = last;
+      this.afterTripSelected();
+    }
+  },
+  methods:{
+    // ---------- store ----------
+    loadStore(){
+      const raw = localStorage.getItem("tripbook_store_v2");
+      if(raw){
+        try{ return JSON.parse(raw); }catch(e){}
+      }
+      return { trips: [] };
+    },
+    persist(){
+      localStorage.setItem("tripbook_store_v2", JSON.stringify(this.store));
+      if(this.activeTripId) localStorage.setItem("tripbook_activeTripId_v2", this.activeTripId);
+    },
+    uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); },
+
+    // ---------- time ----------
+    tickNow(){
+      const d = dayjs();
+      this.nowText = d.format("YYYY/MM/DD HH:mm");
+    },
+    daysUntil(dateStr){
+      const a = dayjs().startOf('day');
+      const b = dayjs(dateStr).startOf('day');
+      return b.diff(a,'day');
+    },
+    md(dateStr){ return dayjs(dateStr).format("M/D"); },
+    dow(dateStr){
+      const map = ["日","一","二","三","四","五","六"];
+      return "週" + map[dayjs(dateStr).day()];
+    },
+
+    // ---------- trip days ----------
+    tripDays(trip){
+      const out=[];
+      let d = dayjs(trip.startDate);
+      const end = dayjs(trip.endDate);
+      while(d.isBefore(end) || d.isSame(end,'day')){
+        out.push(d.format("YYYY-MM-DD"));
+        d = d.add(1,'day');
+      }
+      return out;
+    },
+    ensureTripShape(t){
+      t.people ||= [];
+      t.itinerary ||= {};
+      t.expenses ||= [];
+      t.notes ||= [];
+      t.favCategories ||= ["吃飯","咖啡","逛街","景點","買買","代購"];
+      t.fav ||= [];
+      t.shop ||= [];
+      t.luggage ||= [];
+      t.flights ||= [];
+      t.currencies ||= [
+        { code:"TWD", name:"台幣", rateToTWD: 1 },
+        { code:"KRW", name:"韓元", rateToTWD: 0.0212 },
+        { code:"JPY", name:"日圓", rateToTWD: 0.22 }
+      ];
+      t.city ||= "Seoul";
+      for(const d of this.tripDays(t)){
+        if(!t.itinerary[d]) t.itinerary[d]=[];
+      }
+      if(!this.activeDay) this.activeDay = this.tripDays(t)[0] || "";
+    },
+
+    selectTrip(id){
+      this.activeTripId = id;
+      this.afterTripSelected();
+      this.tab = "plan";
+      this.persist();
+    },
+    afterTripSelected(){
+      if(!this.activeTrip) return;
+      this.ensureTripShape(this.activeTrip);
+      const days = this.tripDays(this.activeTrip);
+      this.activeDay = days.includes(this.activeDay) ? this.activeDay : (days[0]||"");
+      this.selectedExpenseDay = "";
+      this.favFilter = "";
+      this.$nextTick(()=> this.mountSortable());
+      this.weatherQuery = this.activeTrip.city || "Seoul";
+      this.refreshWeather();
+    },
+    backToCatalog(){
+      this.activeTripId = "";
+      this.tab = "plan";
+      this.openTripSettings=false;
+      this.persist();
+    },
+    deleteTrip(id){
+      if(!confirm("確定要刪除此行程？")) return;
+      this.store.trips = this.store.trips.filter(t=>t.id!==id);
+      this.activeTripId = "";
+      this.persist();
+      this.openTripSettings=false;
+    },
+
+    startCreateTrip(){
+      const t = {
+        id: this.uid(),
+        title: "首爾 ITZY 三巡",
+        avatar: "",
+        startDate: "2026-02-11",
+        endDate: "2026-02-16",
+        city: "Seoul",
+        people: [
+          { id: this.uid(), name: "我", avatar: "" }
+        ],
+        flights: [
+          { id:this.uid(), type:"去程", date:"2026-02-11", depAirport:"TPE T1", arrAirport:"ICN T2", depTime:"12:25", arrTime:"15:50", flightNo:"", note:"" },
+          { id:this.uid(), type:"回程", date:"2026-02-16", depAirport:"ICN T2", arrAirport:"TPE T1", depTime:"09:00", arrTime:"11:00", flightNo:"", note:"前一晚行李先收好比較舒服 😴" }
+        ],
+        currencies: [
+          { code:"TWD", name:"台幣", rateToTWD: 1 },
+          { code:"KRW", name:"韓元", rateToTWD: 0.0212 },
+          { code:"JPY", name:"日圓", rateToTWD: 0.22 }
+        ],
+        itinerary: {},
+        expenses: [],
+        notes: [],
+        favCategories: ["吃飯","咖啡","逛街","景點","買買","代購"],
+        fav: [],
+        shop: [],
+        luggage: this.seedLuggage()
+      };
+      this.store.trips.unshift(t);
+      this.ensureTripShape(t);
+      this.activeTripId = t.id;
+      this.openTripCatalog=false;
+      this.persist();
+      this.afterTripSelected();
+      this.openTripSettings=true;
+    },
+
+    // ---------- UI helpers ----------
+    segClass(key){ return (this.tab===key) ? "segActive" : "bg-white/70 hover:bg-white"; },
+    money(n){
+      const x = Number(n||0);
+      return x.toLocaleString("zh-Hant", { maximumFractionDigits: 0 });
+    },
+
+    // ---------- luggage ----------
+    seedLuggage(){
+      const add = (cat, name, note="") => ({ id:this.uid(), category:cat, name, note, done:false });
+      const arr = [];
+      ["錢包","鑰匙","護照","身分證影本","飯店訂購資訊影本","耳機","S24U/隨身碟/硬碟","平板","衛生紙","塑膠袋","傘","萬用插頭/充電線","行動電源(記得WH標示)","衛生棉","眼鏡/盒子/隱形日拋","透明夾鏈袋","手機掛繩","酒精濕紙巾","行李袋"]
+        .forEach(x=>arr.push(add("必需品", x)));
+      ["OK蹦","防曬","口罩","過敏藥"].forEach(x=>arr.push(add("藥品", x)));
+      ["牙膏牙刷","洗面乳","卸妝","乳液","離子夾","梳子","髮夾髮圈髮帶","浴巾(拋棄式)","化妝包"]
+        .forEach(x=>arr.push(add("洗漱用品", x)));
+      ["衣服","褲子","睡衣","外套","襪子","內衣內褲","飾品"].forEach(x=>arr.push(add("衣物", x)));
+      ["手燈/貓耳/裝飾/電池","娃娃","卡/卡套/卡盒/卡膜","會員卡"].forEach(x=>arr.push(add("追星", x)));
+      return arr;
+    },
+    luggageCategories(){
+      const set = new Set((this.activeTrip?.luggage||[]).map(i=>i.category||"未分類"));
+      return Array.from(set);
+    },
+    luggageItems(cat){
+      return (this.activeTrip.luggage||[]).filter(i=>(i.category||"未分類")===cat);
+    },
+    openAddLuggage(){
+      this.editor = { open:true, type:"luggage", title:"➕ 新增行李", mode:"new", refId:"", data:{ category:"必需品", name:"", note:"" } };
+    },
+    removeLuggage(id){
+      this.activeTrip.luggage = this.activeTrip.luggage.filter(i=>i.id!==id);
+      this.persist();
+    },
+
+    // ---------- plan ----------
+    mountSortable(){
+      if(!this.activeTrip || !this.activeDay) return;
+      const el = document.getElementById("planList-"+this.activeDay);
+      if(!el) return;
+
+      // 重新 mount（避免切日後不能拖）
+      if(el.__sortableInstance){
+        el.__sortableInstance.destroy();
+        el.__sortableInstance = null;
+      }
+
+      el.__sortableInstance = Sortable.create(el, {
+        animation: 180,
+        delay: 200,
+        delayOnTouchOnly: true,
+        ghostClass: "opacity-60",
+        onEnd: (evt)=>{
+          const list = this.activeTrip.itinerary[this.activeDay] || [];
+          const moved = list.splice(evt.oldIndex, 1)[0];
+          list.splice(evt.newIndex, 0, moved);
+          this.persist();
+        }
+      });
+    },
+    syncDaysAfterTripEdit(){
+      if(!this.activeTrip) return;
+      const keep = this.activeTrip.itinerary || {};
+      const next = {};
+      for(const d of this.tripDays(this.activeTrip)){
+        next[d] = keep[d] || [];
+      }
+      this.activeTrip.itinerary = next;
+      this.activeDay = this.tripDays(this.activeTrip)[0] || "";
+      this.persist();
+      this.$nextTick(()=> this.mountSortable());
+    },
+    openAddPlanItem(){
+      this.editor = {
+        open:true, type:"plan", title:"➕ 新增行程", mode:"new", refId:"",
+        data:{ id:this.uid(), time:"", category:"", title:"", place:"", map:"", link:"", note:"", images:[] }
+      };
+    },
+    editPlanItem(item){
+      this.editor = {
+        open:true, type:"plan", title:"✏️ 編輯行程", mode:"edit", refId:item.id,
+        data: JSON.parse(JSON.stringify(item))
+      };
+    },
+    removePlanItem(id){
+      if(!confirm("刪除此行程項目？")) return;
+      this.activeTrip.itinerary[this.activeDay] = (this.activeTrip.itinerary[this.activeDay]||[]).filter(x=>x.id!==id);
+      this.persist();
+    },
+
+    // ---------- notes ----------
+    openAddNote(){
+      this.editor = {
+        open:true, type:"note", title:"➕ 新增備忘", mode:"new", refId:"",
+        data:{ id:this.uid(), date:"", time:"", title:"", place:"", map:"", link:"", note:"", images:[] }
+      };
+    },
+    editNote(n){
+      this.editor = {
+        open:true, type:"note", title:"✏️ 編輯備忘", mode:"edit", refId:n.id,
+        data: JSON.parse(JSON.stringify(n))
+      };
+    },
+    removeNote(id){
+      if(!confirm("刪除此備忘？")) return;
+      this.activeTrip.notes = this.activeTrip.notes.filter(x=>x.id!==id);
+      this.persist();
+    },
+
+    // ---------- expenses ----------
+    totalExpenseTWD(){
+      return (this.activeTrip.expenses||[]).reduce((s,e)=>s+(Number(e.amountTWD)||0),0);
+    },
+    dayTotalTWD(d){
+      if(!d) return this.totalExpenseTWD();
+      return (this.activeTrip.expenses||[]).filter(e=>e.date===d).reduce((s,e)=>s+(Number(e.amountTWD)||0),0);
+    },
+    filteredExpenses(){
+      const list = (this.activeTrip.expenses||[]).slice().sort((a,b)=>(a.date>b.date?-1:1));
+      if(!this.selectedExpenseDay) return list;
+      return list.filter(e=>e.date===this.selectedExpenseDay);
+    },
+    calcExpenseTWD(e){
+      const c = this.activeTrip.currencies.find(x=>x.code===e.currency) || { rateToTWD:1 };
+      return Number(e.amount||0) * Number(c.rateToTWD||1);
+    },
+
+    hasCustomSplit(e){
+      const sc = e.splitCustom || {};
+      return Object.keys(sc).some(k => Number(sc[k]) > 0);
+    },
+
+    openAddExpense(){
+      const defaultDate = this.activeDay || this.tripDays(this.activeTrip)[0] || dayjs().format("YYYY-MM-DD");
+      this.editor = {
+        open:true, type:"expense", title:"➕ 新增記帳", mode:"new", refId:"",
+        data:{
+          id:this.uid(),
+          date: defaultDate,
+          category:"餐飲",
+          title:"",
+          place:"",
+          currency:"KRW",
+          amount: 0,
+          amountTWD: 0,
+          method:"現金",
+          paidBy: (this.activeTrip.people[0]?.id || ""),
+          splitAmong: (this.activeTrip.people.map(p=>p.id)),
+          splitCustom: {},   // ✅
+          note:"",
+          receipt:""
+        }
+      };
+    },
+    editExpense(e){
+      const copy = JSON.parse(JSON.stringify(e));
+      copy.splitCustom ||= {}; // ✅
+      this.editor = {
+        open:true, type:"expense", title:"✏️ 編輯記帳", mode:"edit", refId:e.id,
+        data: copy
+      };
+    },
+    removeExpense(id){
+      if(!confirm("刪除此筆記帳？")) return;
+      this.activeTrip.expenses = this.activeTrip.expenses.filter(x=>x.id!==id);
+      this.persist();
+    },
+
+    // ✅ 依「自訂分攤」計算每個人的實際分攤（台幣）
+    getExpenseShares(e){
+      const amt = Number(e.amountTWD || 0);
+      const people = new Set((this.activeTrip.people||[]).map(p=>p.id));
+      const split = (e.splitAmong||[]).filter(pid=>people.has(pid));
+      const custom = e.splitCustom || {};
+
+      const chosen = split.length ? split : (e.paidBy ? [e.paidBy] : []);
+      let customSum = 0;
+      const filled = [];
+      const blank = [];
+
+      for(const pid of chosen){
+        const v = Number(custom[pid]);
+        if(v > 0){
+          filled.push({pid, v});
+          customSum += v;
+        }else{
+          blank.push(pid);
+        }
+      }
+
+      const remain = Math.max(0, amt - customSum);
+      const each = blank.length ? (remain / blank.length) : 0;
+
+      const out = [];
+      for(const f of filled) out.push({ pid: f.pid, shareTWD: f.v });
+      for(const pid of blank) out.push({ pid, shareTWD: each });
+
+      return out;
+    },
+
+    previewSplitText(e){
+      e.amountTWD = this.calcExpenseTWD(e);
+      const shares = this.getExpenseShares(e);
+      if(!shares.length) return "—";
+      const a = shares[0];
+      const b = shares.length>1 ? shares[1] : null;
+      const more = shares.length>2 ? `…（共 ${shares.length} 人）` : "";
+      const one = `${this.personName(a.pid)} NT$ ${this.money(a.shareTWD)}`;
+      const two = b ? `、${this.personName(b.pid)} NT$ ${this.money(b.shareTWD)}` : "";
+      return one + two + (more ? " " + more : "");
+    },
+
+    // ✅ 個人累積（依分攤）
+    personTotals(){
+      const people = this.activeTrip.people || [];
+      const totals = {};
+      for(const p of people) totals[p.id] = 0;
+
+      for(const e of (this.activeTrip.expenses||[])){
+        const shares = this.getExpenseShares(e);
+        for(const s of shares){
+          if(totals[s.pid] !== undefined) totals[s.pid] += Number(s.shareTWD||0);
+        }
+      }
+
+      return people.map(p=>({
+        pid: p.id,
+        name: p.name,
+        avatar: p.avatar,
+        total: Math.round(totals[p.id] || 0)
+      })).sort((a,b)=>b.total-a.total);
+    },
+
+    // settlement
+    personName(pid){
+      return this.activeTrip.people.find(p=>p.id===pid)?.name || "（未知）";
+    },
+    settlementLines(){
+      const people = this.activeTrip.people.map(p=>p.id);
+      const balance = {};
+      for(const pid of people) balance[pid]=0;
+
+      for(const e of (this.activeTrip.expenses||[])){
+        const amt = Number(e.amountTWD||0);
+        const payer = e.paidBy;
+        if(balance[payer]===undefined) balance[payer]=0;
+        balance[payer] += amt;
+
+        const shares = this.getExpenseShares(e);
+        for(const s of shares){
+          if(balance[s.pid]===undefined) balance[s.pid]=0;
+          balance[s.pid] -= Number(s.shareTWD||0);
+        }
+      }
+
+      const creditors = [];
+      const debtors = [];
+      for(const pid of people){
+        const v = Math.round(balance[pid]);
+        if(v>0) creditors.push({pid, v});
+        else if(v<0) debtors.push({pid, v: -v});
+      }
+      creditors.sort((a,b)=>b.v-a.v);
+      debtors.sort((a,b)=>b.v-a.v);
+
+      const lines=[];
+      let i=0,j=0;
+      while(i<debtors.length && j<creditors.length){
+        const d = debtors[i], c = creditors[j];
+        const pay = Math.min(d.v, c.v);
+        if(pay>0){
+          // ✅ 這裡改成更乾淨的箭頭，不用「誰欠誰」字樣
+          lines.push(`${this.personName(d.pid)} → ${this.personName(c.pid)}  NT$ ${this.money(pay)}`);
+          d.v -= pay;
+          c.v -= pay;
+        }
+        if(d.v===0) i++;
+        if(c.v===0) j++;
+      }
+      return lines;
+    },
+
+    // ---------- currencies ----------
+    addCurrency(){
+      const code = (this.newCur.code||"").trim().toUpperCase();
+      if(!code) return alert("請輸入幣別代碼（例如 JPY）");
+      if(this.activeTrip.currencies.some(c=>c.code===code)) return alert("已存在此幣別");
+      const rate = Number(this.newCur.rateToTWD||0);
+      if(!rate || rate<=0) return alert("請輸入正確匯率");
+      this.activeTrip.currencies.push({ code, name:(this.newCur.name||""), rateToTWD: rate });
+      this.newCur = { code:"", name:"", rateToTWD: 1 };
+      this.persist();
+    },
+    removeCurrency(code){
+      if(!confirm("刪除幣別？")) return;
+      this.activeTrip.currencies = this.activeTrip.currencies.filter(c=>c.code!==code);
+      this.persist();
+    },
+
+    // ✅ 自動更新匯率（仍可手動改）
+    async autoUpdateRates(){
+      try{
+        const res = await fetch("https://open.er-api.com/v6/latest/USD");
+        const js = await res.json();
+        const r = js.rates || {};
+        if(!r.TWD) throw new Error("No TWD rate");
+        const usdToTwd = Number(r.TWD);
+
+        for(const c of this.activeTrip.currencies){
+          if(c.code === "TWD"){ c.rateToTWD = 1; continue; }
+          const usdToCur = Number(r[c.code]);
+          if(!usdToCur) continue;
+          const curToUsd = 1 / usdToCur;
+          c.rateToTWD = Number((curToUsd * usdToTwd).toFixed(6));
+        }
+        this.persist();
+        alert("已更新匯率（仍可手動調整）");
+      }catch(e){
+        alert("自動更新匯率失敗（可能是 API 暫時不可用）。你可以先手動輸入。");
+      }
+    },
+
+    // ---------- fav ----------
+    openAddFav(){
+      this.editor = {
+        open:true, type:"fav", title:"➕ 新增收藏", mode:"new", refId:"",
+        data:{ id:this.uid(), category:"", area:"未分類地區", name:"", price:null, currency:"KRW", qty:1, place:"", buyer:"", link:"", image:"", note:"" }
+      };
+    },
+    editFav(it){
+      this.editor = { open:true, type:"fav", title:"✏️ 編輯收藏", mode:"edit", refId:it.id, data: JSON.parse(JSON.stringify(it)) };
+    },
+    removeFav(id){
+      if(!confirm("刪除此收藏？")) return;
+      this.activeTrip.fav = this.activeTrip.fav.filter(x=>x.id!==id);
+      this.persist();
+    },
+    filteredFav(){
+      const list = (this.activeTrip.fav||[]).slice();
+      if(!this.favFilter) return list;
+      return list.filter(x=>x.category===this.favFilter);
+    },
+    favGroupedByArea(){
+      const list = this.filteredFav();
+      const map = new Map();
+      for(const it of list){
+        const area = (it.area||"未分類地區").trim() || "未分類地區";
+        if(!map.has(area)) map.set(area, []);
+        map.get(area).push(it);
+      }
+      const groups = Array.from(map.entries()).map(([area,items])=>({
+        area,
+        items: items.sort((a,b)=>(a.category||"").localeCompare(b.category||""))
+      }));
+      groups.sort((a,b)=>{
+        if(a.area==="未分類地區") return 1;
+        if(b.area==="未分類地區") return -1;
+        return a.area.localeCompare(b.area);
+      });
+      return groups;
+    },
+    addFavCategory(){
+      const c = (this.newFavCategory||"").trim();
+      if(!c) return;
+      if(this.activeTrip.favCategories.includes(c)) return alert("已存在此類型");
+      this.activeTrip.favCategories.push(c);
+      this.newFavCategory="";
+      this.persist();
+    },
+    removeFavCategory(c){
+      if(!confirm("刪除此類型？（不會刪除已存在的收藏項目，只是不再出現在選單）")) return;
+      this.activeTrip.favCategories = this.activeTrip.favCategories.filter(x=>x!==c);
+      if(this.favFilter===c) this.favFilter="";
+      this.persist();
+    },
+
+    // ---------- shop ----------
+    openAddShop(){
+      this.editor = {
+        open:true, type:"shop", title:"➕ 新增代購/購物", mode:"new", refId:"",
+        data:{ id:this.uid(), area:"未分類地區", name:"", price:null, currency:"KRW", qty:1, place:"", buyer:"", link:"", image:"", note:"" }
+      };
+    },
+    editShop(it){
+      this.editor = { open:true, type:"shop", title:"✏️ 編輯代購/購物", mode:"edit", refId:it.id, data: JSON.parse(JSON.stringify(it)) };
+    },
+    removeShop(id){
+      if(!confirm("刪除此項目？")) return;
+      this.activeTrip.shop = this.activeTrip.shop.filter(x=>x.id!==id);
+      this.persist();
+    },
+
+    // ---------- flights ----------
+    startAddFlight(){
+      this.activeTrip.flights ||= [];
+      this.editor = {
+        open:true, type:"flight", title:"➕ 新增航班", mode:"new", refId:"",
+        data:{ id:this.uid(), type:"去程", date:"", depAirport:"", arrAirport:"", depTime:"", arrTime:"", flightNo:"", note:"" }
+      };
+    },
+    editFlight(f){
+      this.editor = { open:true, type:"flight", title:"✏️ 編輯航班", mode:"edit", refId:f.id, data: JSON.parse(JSON.stringify(f)) };
+    },
+    removeFlight(id){
+      if(!confirm("刪除此航班？")) return;
+      this.activeTrip.flights = (this.activeTrip.flights||[]).filter(x=>x.id!==id);
+      this.persist();
+    },
+
+    // ---------- editor save/close ----------
+    closeEditor(){ this.editor.open=false; },
+    saveEditor(){
+      const t = this.editor.type;
+      const data = this.editor.data;
+
+      if(t==="person"){
+        if(!data.name || !data.name.trim()) return alert("名字必填");
+        if(this.editor.mode==="new"){
+          this.activeTrip.people.push({ id:this.uid(), name:data.name.trim(), avatar: data.avatar||"" });
+        }else{
+          const p = this.activeTrip.people.find(x=>x.id===this.editor.refId);
+          if(p){ p.name=data.name.trim(); p.avatar=data.avatar||""; }
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="flight"){
+        this.activeTrip.flights ||= [];
+        if(this.editor.mode==="new"){
+          this.activeTrip.flights.unshift(data);
+        }else{
+          const idx = this.activeTrip.flights.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) this.activeTrip.flights[idx]=data;
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="luggage"){
+        if(!data.name || !data.name.trim()) return alert("項目名稱必填");
+        this.activeTrip.luggage.push({ id:this.uid(), category:(data.category||"未分類"), name:data.name.trim(), note:data.note||"", done:false });
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="plan"){
+        if(this.editor.mode==="new"){
+          this.activeTrip.itinerary[this.activeDay].push(data);
+        }else{
+          const list = this.activeTrip.itinerary[this.activeDay]||[];
+          const idx = list.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) list[idx]=data;
+        }
+        this.persist(); this.closeEditor();
+        this.$nextTick(()=> this.mountSortable());
+        return;
+      }
+
+      if(t==="note"){
+        if(this.editor.mode==="new"){
+          this.activeTrip.notes.unshift(data);
+        }else{
+          const idx = this.activeTrip.notes.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) this.activeTrip.notes[idx]=data;
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="expense"){
+        data.amountTWD = this.calcExpenseTWD(data);
+        data.splitCustom ||= {};
+        if(!data.date) return alert("請填日期（記帳需要日期）");
+        if(!data.splitAmong || data.splitAmong.length===0) return alert("至少選 1 位分攤人員");
+        if(this.editor.mode==="new"){
+          this.activeTrip.expenses.unshift(data);
+        }else{
+          const idx = this.activeTrip.expenses.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) this.activeTrip.expenses[idx]=data;
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="fav"){
+        if(this.editor.mode==="new"){
+          this.activeTrip.fav.unshift(data);
+        }else{
+          const idx = this.activeTrip.fav.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) this.activeTrip.fav[idx]=data;
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+
+      if(t==="shop"){
+        if(this.editor.mode==="new"){
+          this.activeTrip.shop.unshift(data);
+        }else{
+          const idx = this.activeTrip.shop.findIndex(x=>x.id===this.editor.refId);
+          if(idx>=0) this.activeTrip.shop[idx]=data;
+        }
+        this.persist(); this.closeEditor(); return;
+      }
+    },
+
+    // ---------- image pick ----------
+    readFileAsDataURL(file){
+      return new Promise((resolve,reject)=>{
+        const fr = new FileReader();
+        fr.onload = ()=> resolve(fr.result);
+        fr.onerror = reject;
+        fr.readAsDataURL(file);
+      });
+    },
+    async onAddImagesToEditor(ev){
+      const files = Array.from(ev.target.files||[]);
+      if(!files.length) return;
+      this.editor.data.images ||= [];
+      for(const f of files){
+        const url = await this.readFileAsDataURL(f);
+        this.editor.data.images.push(url);
+      }
+      ev.target.value="";
+    },
+    async onPickSingleImageToEditor(ev){
+      const f = (ev.target.files||[])[0];
+      if(!f) return;
+      this.editor.data.image = await this.readFileAsDataURL(f);
+      ev.target.value="";
+    },
+    async onPickReceipt(ev){
+      const f = (ev.target.files||[])[0];
+      if(!f) return;
+      this.editor.data.receipt = await this.readFileAsDataURL(f);
+      ev.target.value="";
+    },
+
+    // ---------- people ----------
+    startAddPerson(){
+      this.editor = { open:true, type:"person", title:"➕ 新增人員", mode:"new", refId:"", data:{ name:"", avatar:"" } };
+    },
+    editPerson(p){
+      this.editor = { open:true, type:"person", title:"✏️ 編輯人員", mode:"edit", refId:p.id, data: JSON.parse(JSON.stringify(p)) };
+    },
+    removePerson(id){
+      if(!confirm("刪除此人員？（已記帳資料仍會保留支付者 id，建議先改記帳）")) return;
+      this.activeTrip.people = this.activeTrip.people.filter(p=>p.id!==id);
+      this.persist();
+    },
+
+    // ---------- avatar crop ----------
+    async onPickTripAvatar(ev){
+      const f = (ev.target.files||[])[0];
+      if(!f) return;
+      const src = await this.readFileAsDataURL(f);
+      this.openCropper(src, (cropped)=>{
+        this.activeTrip.avatar = cropped;
+        this.persist();
+      });
+      ev.target.value="";
+    },
+    async onPickPersonAvatar(ev){
+      const f = (ev.target.files||[])[0];
+      if(!f) return;
+      const src = await this.readFileAsDataURL(f);
+      this.openCropper(src, (cropped)=>{
+        this.editor.data.avatar = cropped; // immediate preview
+      });
+      ev.target.value="";
+    },
+    openCropper(src, cb){
+      this.crop.open = true;
+      this.crop.imgSrc = src;
+      this.crop.scale = 1.4;
+      this.crop.offX = 0;
+      this.crop.offY = 0;
+      this.crop.dragging = false;
+      this.crop.callback = cb;
+    },
+    cropImgStyle(){
+      const s = this.crop.scale;
+      return {
+        transform: `translate(calc(-50% + ${this.crop.offX}px), calc(-50% + ${this.crop.offY}px)) scale(${s})`,
+        transformOrigin: "center",
+        width: "100%",
+        height: "100%",
+        objectFit: "cover"
+      };
+    },
+    cropPointerDown(e){
+      this.crop.dragging = true;
+      this.crop.px = e.clientX;
+      this.crop.py = e.clientY;
+      e.target.setPointerCapture?.(e.pointerId);
+    },
+    cropPointerMove(e){
+      if(!this.crop.dragging) return;
+      const dx = e.clientX - this.crop.px;
+      const dy = e.clientY - this.crop.py;
+      this.crop.px = e.clientX;
+      this.crop.py = e.clientY;
+      this.crop.offX += dx;
+      this.crop.offY += dy;
+    },
+    cropPointerUp(){ this.crop.dragging = false; },
+    closeCropper(use){
+      if(!use){
+        this.crop.open=false;
+        return;
+      }
+      const size = 512;
+      const canvas = document.createElement("canvas");
+      canvas.width = size; canvas.height = size;
+      const ctx = canvas.getContext("2d");
+
+      const img = new Image();
+      img.onload = ()=>{
+        const iw = img.width, ih = img.height;
+        const scaleCover = Math.max(size/iw, size/ih);
+        const dw = iw*scaleCover, dh = ih*scaleCover;
+        const dx0 = (size - dw)/2;
+        const dy0 = (size - dh)/2;
+
+        const s = this.crop.scale;
+        const dx = this.crop.offX * (size / 460);
+        const dy = this.crop.offY * (size / 460);
+
+        ctx.save();
+        ctx.translate(size/2 + dx, size/2 + dy);
+        ctx.scale(s, s);
+        ctx.translate(-size/2, -size/2);
+        ctx.drawImage(img, dx0, dy0, dw, dh);
+        ctx.restore();
+
+        const out = canvas.toDataURL("image/jpeg", 0.92);
+        this.crop.open=false;
+        if(typeof this.crop.callback==="function") this.crop.callback(out);
+      };
+      img.src = this.crop.imgSrc;
+    },
+
+    // ---------- weather (Open-Meteo) ----------
+    async searchCity(){
+      const q = (this.weatherQuery||"").trim();
+      if(!q) return;
+      this.weatherStatus = "搜尋城市中…";
+      try{
+        const url = `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(q)}&count=1&language=zh&format=json`;
+        const res = await fetch(url);
+        const js = await res.json();
+        if(!js.results || !js.results.length){
+          this.weatherStatus = "找不到城市，試試英文拼音（Seoul / Tokyo）";
+          return;
+        }
+        const r = js.results[0];
+        this.weather.cityName = `${r.name}${r.country ? " · "+r.country : ""}`;
+        await this.fetchWeather(r.latitude, r.longitude);
+        this.weatherStatus = "";
+        this.activeTrip.city = q;
+        this.persist();
+      }catch(e){
+        this.weatherStatus = "天氣服務暫時失敗（請稍後再試）";
+      }
+    },
+    async refreshWeather(){
+      const q = (this.activeTrip?.city || this.weatherQuery || "Seoul").trim();
+      this.weatherQuery = q;
+      await this.searchCity();
+    },
+    async fetchWeather(lat, lon){
+      const url = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,windspeed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`;
+      const res = await fetch(url);
+      const js = await res.json();
+      this.weather.updatedAt = dayjs().format("YYYY/MM/DD HH:mm");
+      this.weather.current = {
+        temperature: Math.round(js.current.temperature_2m),
+        windspeed: Math.round(js.current.windspeed_10m)
+      };
+      const days = js.daily.time.map((t,idx)=>({
+        date: t,
+        weekday: this.dow(t),
+        tmax: Math.round(js.daily.temperature_2m_max[idx]),
+        tmin: Math.round(js.daily.temperature_2m_min[idx])
+      }));
+      this.weather.daily = days;
+    }
+  }
+}).mount("#app");
+</script>
+</body>
+</html>
