@@ -929,8 +929,9 @@
   <!-- Trip settings -->
   <div v-if="openTripSettings" class="fixed inset-0 z-[60] grid place-items-center px-4">
     <div class="absolute inset-0 bg-black/25" @click="openTripSettings=false"></div>
-    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
-         style="border-color: var(--line);">
+    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4
+            max-h-[85vh] overflow-y-auto"
+     style="border-color: var(--line);">
       <div class="flex items-center justify-between">
         <div class="font-bold text-[16px]">⚙️ 行程設定</div>
         <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openTripSettings=false">✖</button>
@@ -2287,3 +2288,4 @@ createApp({
 </script>
 </body>
 </html>
+
