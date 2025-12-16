@@ -362,8 +362,8 @@ ensureTripShape(t)
      :class="tripDays(activeTrip).length >= 7
        ? 'flex scrollX'
        : 'grid grid-cols-[repeat(auto-fit,minmax(0,1fr))]'">
-                <button v-for="d in tripDays(activeTrip)" :key="d"
-        @click="activeDay=d; $nextTick(()=>mountSortable())"
+                <button v-for="d in tripDays(activeTrip)" :key="activeTrip.id+'-'+d"
+        @click="switchDay(d)"
        class="rounded-2xl px-3 py-2 text-[13px] shadow-insetSoft tap dayPill"
         :class="[
           activeDay===d ? 'dayPillActive' : '',
@@ -1956,6 +1956,23 @@ removeTripBackground(){
       this.activeTrip.luggage = this.activeTrip.luggage.filter(i=>i.id!==id);
       this.persist();
     },
+switchDay(d){
+  d = String(d);
+  if(d === String(this.activeDay)) return;
+
+  // 先把舊的 sortable 關掉（避免觸控吃點）
+  const oldEl = document.getElementById("planList-"+this.activeDay);
+  if(oldEl && oldEl.__sortableInstance){
+    oldEl.__sortableInstance.destroy();
+    oldEl.__sortableInstance = null;
+  }
+
+  // ✅ 立刻換日（這一行就是決定「深色」的）
+  this.activeDay = d;
+
+  // ✅ DOM 更新後再 mount sortable
+  this.$nextTick(()=> this.mountSortable());
+},
 
     // ---------- plan ----------
     mountSortable(){
