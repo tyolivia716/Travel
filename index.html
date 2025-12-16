@@ -210,7 +210,7 @@
       <!-- Tabs -->
       <div class="mt-4 rounded-3xl p-2 bg-white/65 border shadow-soft sticky top-[72px] z-30"
            style="border-color: var(--line);">
-        <div class="grid grid-cols-6 gap-2 text-[12px]">
+        <div class="grid grid-cols-5 gap-2 text-[12px]">
           <button @click="tab='plan'" :class="segClass('plan')" class="rounded-2xl py-2 px-2 btn">
             🗓️ 行程
           </button>
@@ -222,9 +222,6 @@
           </button>
           <button @click="tab='fav'" :class="segClass('fav')" class="rounded-2xl py-2 px-2 btn">
             ⭐ 收藏
-          </button>
-          <button @click="tab='shop'" :class="segClass('shop')" class="rounded-2xl py-2 px-2 btn">
-            🛍️ 代購
           </button>
           <button @click="tab='info'" :class="segClass('info')" class="rounded-2xl py-2 px-2 btn">
             📌 資訊
@@ -856,14 +853,42 @@
     <div class="max-w-[460px] mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
       <div class="glass rounded-[28px] shadow-soft border p-2 mb-3"
            style="border-color: var(--line);">
-        <div class="grid grid-cols-6 gap-1 text-[11px]">
-          <button class="rounded-2xl py-2" @click="tab='plan'" :class="tab==='plan'?'segActive':''">🗓️<div>行程</div></button>
-          <button class="rounded-2xl py-2" @click="tab='money'" :class="tab==='money'?'segActive':''">💸<div>記帳</div></button>
-          <button class="rounded-2xl py-2" @click="tab='luggage'" :class="tab==='luggage'?'segActive':''">🎒<div>行李</div></button>
-          <button class="rounded-2xl py-2" @click="tab='fav'" :class="tab==='fav'?'segActive':''">⭐<div>收藏</div></button>
-          <button class="rounded-2xl py-2" @click="tab='shop'" :class="tab==='shop'?'segActive':''">🛍️<div>代購</div></button>
-          <button class="rounded-2xl py-2" @click="tab='info'" :class="tab==='info'?'segActive':''">📌<div>資訊</div></button>
-        </div>
+        <div class="grid grid-cols-5 gap-1 text-[11px]">
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+          @click="tab='plan'"
+          :class="tab==='plan'?'segActive':''">
+    <span class="text-[18px] leading-none">🗓️</span>
+    <span class="text-[11px] leading-none">行程</span>
+  </button>
+
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+          @click="tab='money'"
+          :class="tab==='money'?'segActive':''">
+    <span class="text-[18px] leading-none">💸</span>
+    <span class="text-[11px] leading-none">記帳</span>
+  </button>
+
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+          @click="tab='luggage'"
+          :class="tab==='luggage'?'segActive':''">
+    <span class="text-[18px] leading-none">🎒</span>
+    <span class="text-[11px] leading-none">行李</span>
+  </button>
+
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+          @click="tab='fav'"
+          :class="tab==='fav'?'segActive':''">
+    <span class="text-[18px] leading-none">⭐</span>
+    <span class="text-[11px] leading-none">收藏</span>
+  </button>
+
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+          @click="tab='info'"
+          :class="tab==='info'?'segActive':''">
+    <span class="text-[18px] leading-none">📌</span>
+    <span class="text-[11px] leading-none">資訊</span>
+  </button>
+</div>
       </div>
     </div>
   </nav>
@@ -886,6 +911,30 @@
           <div class="font-bold">➕ 新增行程</div>
           <div class="text-[13px] hint mt-1">建立新的旅遊計畫（可設定頭像/日期/人員/航班）</div>
         </button>
+<!-- Backup / Restore -->
+<div class="mt-4 rounded-3xl p-4 bg-white/70 border"
+     style="border-color: var(--line);">
+
+  <div class="font-semibold mb-2">💾 資料備份</div>
+
+  <div class="flex gap-2 flex-wrap">
+    <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+            @click="exportData()">
+      ⬇️ 匯出備份
+    </button>
+
+    <label class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white shadow-soft cursor-pointer">
+      ⬆️ 匯入備份
+      <input type="file" accept=".json"
+             class="hidden"
+             @change="importData($event)">
+    </label>
+  </div>
+
+  <div class="text-[12px] text-gray-500 mt-2">
+    ⚠️ 匯入會覆蓋目前所有資料，請確認備份檔正確
+  </div>
+</div>
 
         <button v-for="t in store.trips" :key="'m-'+t.id"
                 class="w-full text-left rounded-3xl p-4 bg-white/70 hover:bg-white border shadow-soft"
@@ -1127,7 +1176,7 @@
       </div>
 
       <div class="mt-4 space-y-3 max-h-[70vh] overflow-auto pr-1">
-        <!-- ✅ infoBlock -->
+<!-- ✅ infoBlock -->
 <template v-if="editor.type==='infoBlock'">
   <input class="input rounded-2xl px-3 py-2 text-[13px]"
          v-model="editor.data.title" placeholder="標題（例：🎤 演唱會）">
@@ -1144,7 +1193,6 @@
             <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
           </div>
-
 
           <div class="grid grid-cols-2 gap-2" v-if="editor.type==='plan'">
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
@@ -1462,17 +1510,58 @@ createApp({
       this.afterTripSelected();
     }
   },
-  methods:{
-    editInfoBlock(b){
-  this.editor = {
-    open:true,
-    type:"infoBlock",
-    title:"✏️ 編輯固定資訊",
-    mode:"edit",
-    refId:b.id,
-    data: JSON.parse(JSON.stringify(b))
-  };
-},
+ methods:{
+  editInfoBlock(b){
+    this.editor = {
+      open:true,
+      type:"infoBlock",
+      title:"✏️ 編輯固定資訊",
+      mode:"edit",
+      refId:b.id,
+      data: JSON.parse(JSON.stringify(b))
+    };
+  },
+
+  exportData(){
+    const dataStr = JSON.stringify(this.store, null, 2);
+    const blob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "tripbook_backup.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    URL.revokeObjectURL(url);
+  },
+
+  async importData(event){
+    const file = event.target.files?.[0];
+    if(!file) return;
+
+    try{
+      const text = await file.text();
+      const json = JSON.parse(text);
+
+      if(!json || !Array.isArray(json.trips)){
+        alert("檔案格式錯誤，請選擇正確的備份檔");
+        return;
+      }
+
+      this.store = json;
+      this.persist();
+      alert("匯入完成！");
+    }catch(e){
+      alert("讀取失敗，請確認檔案是否正確");
+    }
+
+    event.target.value = "";
+  },
+
+  // 👇👇👇 你原本的 loadStore()、persist()、後面所有 methods 都接在這行下面
+
 
     // ---------- store ----------
     loadStore(){
@@ -2358,6 +2447,4 @@ if(t==="infoBlock"){
 </script>
 </body>
 </html>
-
-
 
