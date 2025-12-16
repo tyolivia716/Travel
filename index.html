@@ -77,6 +77,73 @@
     }
     .hint { color: rgba(91,107,132,.9); }
     .mono { font-variant-numeric: tabular-nums; }
+/* ====== polish pack ====== */
+
+/* 按鈕按下的回饋（爽感） */
+.tap {
+  transition: transform .12s ease, filter .12s ease;
+}
+.tap:active { transform: translateY(1px) scale(.98); filter: brightness(.98); }
+
+/* Hero 卡：更像主視覺 */
+.heroCard{
+  position: relative;
+  overflow: hidden;
+}
+.heroCard::before{
+  content:"";
+  position:absolute; inset:-40px;
+  background:
+    radial-gradient(380px 220px at 20% 0%, rgba(158,197,255,.55), transparent 60%),
+    radial-gradient(420px 260px at 90% 20%, rgba(216,208,255,.40), transparent 60%);
+  pointer-events:none;
+}
+.heroCard::after{
+  content:"";
+  position:absolute; inset:0;
+  background: linear-gradient(180deg, rgba(255,255,255,.55), rgba(255,255,255,.15));
+  pointer-events:none;
+}
+.heroInner{ position: relative; }
+
+/* Hero 數字更立體 */
+.heroNum{
+  text-shadow: 0 10px 22px rgba(15,23,42,.14);
+}
+
+/* 日期 pill：未選更淡、選中更凸顯 */
+.dayPill{
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,.60);
+}
+.dayPill:hover{ background: rgba(255,255,255,.78); }
+.dayPillActive{
+  border-color: rgba(158,197,255,.75) !important;
+  background: linear-gradient(180deg, rgba(207,227,255,.95), rgba(207,227,255,.60));
+  box-shadow: 0 10px 22px rgba(15,23,42,.10);
+}
+.dayPillActive .hint{ color: rgba(15,23,42,.65); }
+
+/* 橫滑視覺更順（不會醜醜的捲軸） */
+.scrollX{
+  overflow-x:auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.scrollX::-webkit-scrollbar{ display:none; }
+
+/* 底部 Nav 更浮一點 */
+.bottomFloat{
+  transform: translateY(-6px);
+  box-shadow: 0 18px 40px rgba(15,23,42,.12);
+}
+
+/* 行程卡片：右側操作更像工具列 */
+.actionBtn{
+  width: 40px; height: 40px;
+  border-radius: 18px;
+}
+
   </style>
 </head>
 
@@ -165,11 +232,12 @@
     <!-- Trip Home (Tabs) -->
     <section v-else>
       <!-- Countdown -->
-      <div class="rounded-3xl p-4 bg-card shadow-soft border" style="border-color: var(--line);">
+     <div class="rounded-3xl p-4 bg-card shadow-soft border heroCard" style="border-color: var(--line);">
+  <div class="heroInner">
         <div class="flex items-start justify-between gap-3">
           <div>
             <div class="font-bold text-[16px]">⏳ 離出發還有</div>
-            <div class="mt-1 text-[34px] font-extrabold tracking-tight mono">
+            <div class="mt-1 text-[38px] font-extrabold tracking-tight mono heroNum">
               {{ daysUntil(activeTrip.startDate) }} 天
             </div>
             <div class="text-[13px] hint">（以 {{ activeTrip.startDate }} 為出發日）</div>
@@ -202,6 +270,7 @@
               <div class="mt-1 text-[13px] hint mono">{{ f.depTime || "—" }} → {{ f.arrTime || "—" }}</div>
               <div class="mt-1 text-[13px] hint" v-if="f.flightNo">航班：{{ f.flightNo }}</div>
               <div class="mt-1 text-[13px]" v-if="f.note">📝 {{ f.note }}</div>
+              </div>
             </div>
           </div>
         </div>
@@ -246,13 +315,13 @@
 
              <div class="mt-3 gap-2 pb-2"
      :class="tripDays(activeTrip).length >= 7
-       ? 'flex overflow-x-auto'
+       ? 'flex scrollX'
        : 'grid grid-cols-[repeat(auto-fit,minmax(0,1fr))]'">
                 <button v-for="d in tripDays(activeTrip)" :key="d"
         @click="activeDay=d; $nextTick(()=>mountSortable())"
-        class="rounded-2xl px-3 py-2 text-[13px] border shadow-insetSoft"
+       class="rounded-2xl px-3 py-2 text-[13px] shadow-insetSoft tap dayPill"
         :class="[
-          activeDay===d ? 'segActive' : 'bg-white/70 hover:bg-white',
+          activeDay===d ? 'dayPillActive' : '',
           tripDays(activeTrip).length >= 7 ? 'shrink-0 w-[74px]' : 'w-full'
         ]"
         style="border-color: var(--line);">
@@ -309,14 +378,9 @@
                     </div>
 
                     <div class="flex flex-col gap-2 shrink-0">
-                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
-                              @click="editPlanItem(item)">
-                        ✏️
-                      </button>
-                      <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
-                              @click="removePlanItem(item.id)">
-                        🗑️
-                      </button>
+                      <button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="editPlanItem(item)">✏️</button>
+<button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="removePlanItem(item.id)">🗑️</button>
+
                     </div>
                   </div>
                 </div>
@@ -801,38 +865,38 @@
   <!-- Bottom Nav -->
   <nav v-if="activeTrip" class="fixed bottom-0 left-0 right-0 z-50">
     <div class="max-w-[460px] mx-auto px-4 pb-[env(safe-area-inset-bottom)]">
-      <div class="glass rounded-[28px] shadow-soft border p-2 mb-3"
+      <div class="glass rounded-[28px] shadow-soft border p-2 mb-3 bottomFloat"
            style="border-color: var(--line);">
         <div class="grid grid-cols-5 gap-1 text-[11px]">
-  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none tap"
           @click="tab='plan'"
           :class="tab==='plan'?'segActive':''">
     <span class="text-[18px] leading-none">🗓️</span>
     <span class="text-[11px] leading-none">行程</span>
   </button>
 
-  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none tap"
           @click="tab='money'"
           :class="tab==='money'?'segActive':''">
     <span class="text-[18px] leading-none">💸</span>
     <span class="text-[11px] leading-none">記帳</span>
   </button>
 
-  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none tap"
           @click="tab='luggage'"
           :class="tab==='luggage'?'segActive':''">
     <span class="text-[18px] leading-none">🎒</span>
     <span class="text-[11px] leading-none">行李</span>
   </button>
 
-  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none tap"
           @click="tab='fav'"
           :class="tab==='fav'?'segActive':''">
     <span class="text-[18px] leading-none">⭐</span>
     <span class="text-[11px] leading-none">收藏</span>
   </button>
 
-  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none"
+  <button class="rounded-2xl py-2 flex flex-col items-center justify-center gap-0.5 leading-none tap"
           @click="tab='info'"
           :class="tab==='info'?'segActive':''">
     <span class="text-[18px] leading-none">📌</span>
