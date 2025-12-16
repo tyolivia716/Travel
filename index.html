@@ -244,12 +244,18 @@
                 </button>
               </div>
 
-              <div class="mt-3 flex gap-2 overflow-x-auto pb-2">
+             <div class="mt-3 gap-2 pb-2"
+     :class="tripDays(activeTrip).length >= 7
+       ? 'flex overflow-x-auto'
+       : 'grid grid-cols-[repeat(auto-fit,minmax(0,1fr))]'">
                 <button v-for="d in tripDays(activeTrip)" :key="d"
-                        @click="activeDay=d; $nextTick(()=>mountSortable())"
-                        class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border shadow-insetSoft"
-                        :class="activeDay===d ? 'segActive' : 'bg-white/70 hover:bg-white'"
-                        style="border-color: var(--line);">
+        @click="activeDay=d; $nextTick(()=>mountSortable())"
+        class="rounded-2xl px-3 py-2 text-[13px] border shadow-insetSoft"
+        :class="[
+          activeDay===d ? 'segActive' : 'bg-white/70 hover:bg-white',
+          tripDays(activeTrip).length >= 7 ? 'shrink-0 w-[74px]' : 'w-full'
+        ]"
+        style="border-color: var(--line);">
                   <div class="font-semibold">{{ md(d) }}</div>
                   <div class="text-[11px] hint">{{ dow(d) }}</div>
                 </button>
@@ -589,9 +595,14 @@
                             </span>
                           </div>
                           <div class="mt-2 text-[13px] break-words" v-if="it.note">📝 {{ it.note }}</div>
-                          <div class="mt-2" v-if="it.link">
-                            <a :href="it.link" target="_blank" class="text-[12px] underline decoration-baby/60">🔗 連結</a>
-                          </div>
+                          <div class="mt-2 flex flex-wrap gap-2" v-if="(it.links||[]).length">
+  <a v-for="(lk,idx) in it.links" :key="'itlk-'+it.id+'-'+idx"
+     :href="lk.url" target="_blank"
+     class="text-[12px] underline decoration-baby/60">
+    🔗 {{ (lk.label && lk.label.trim()) ? lk.label : lk.url }}
+  </a>
+</div>
+
                           <div class="mt-3" v-if="it.image">
                             <img :src="it.image" class="w-full max-h-56 object-cover rounded-2xl border"
                                  style="border-color: var(--line);" />
@@ -619,68 +630,6 @@
           </div>
         </section>
 
-        <!-- 代購/購物 -->
-        <section v-show="tab==='shop'">
-          <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
-            <div class="p-4 border-b" style="border-color: var(--line);">
-              <div class="flex items-center justify-between gap-2">
-                <div>
-                  <div class="font-bold text-[16px]">🛍️ 購物 / 代購清單</div>
-                  <div class="text-[13px] hint mt-1">可放商品、數量、價格、購買人、備註</div>
-                </div>
-                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-                        @click="openAddShop()">
-                  ➕ 新增
-                </button>
-              </div>
-            </div>
-
-            <div class="p-4 space-y-3">
-              <div v-if="activeTrip.shop.length===0" class="rounded-2xl p-4 border bg-white/65 text-center hint"
-                   style="border-color: var(--line);">
-                清單空空～先把想買的放進來 ✨
-              </div>
-
-              <div v-for="it in activeTrip.shop" :key="it.id"
-                   class="rounded-3xl p-4 bg-white/70 border shadow-soft"
-                   style="border-color: var(--line);">
-                <div class="flex items-start justify-between gap-3">
-                  <div class="min-w-0">
-                    <div class="text-[12px] hint">👤 {{ it.buyer || "—" }} · 📍 {{ it.place || "—" }}</div>
-                    <div class="mt-1 font-bold text-[16px] break-words">{{ it.name || "（未填名稱）" }}</div>
-                    <div class="mt-2 flex flex-wrap gap-2">
-                      <span class="text-[12px] px-2 py-1 rounded-xl chip">數量：{{ it.qty || 1 }}</span>
-                      <span class="text-[12px] px-2 py-1 rounded-xl chip" v-if="it.price">
-                        價格：{{ it.currency || "KRW" }} {{ money(it.price) }}
-                      </span>
-                    </div>
-                    <div class="mt-2 text-[13px] break-words" v-if="it.note">📝 {{ it.note }}</div>
-                    <div class="mt-2" v-if="it.link">
-                      <a :href="it.link" target="_blank" class="text-[12px] underline decoration-baby/60">🔗 連結</a>
-                    </div>
-                    <div class="mt-3" v-if="it.image">
-                      <img :src="it.image" class="w-full max-h-56 object-cover rounded-2xl border"
-                           style="border-color: var(--line);" />
-                    </div>
-                  </div>
-
-                  <div class="flex flex-col gap-2 shrink-0">
-                    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
-                            @click="editShop(it)">
-                      ✏️
-                    </button>
-                    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
-                            @click="removeShop(it.id)">
-                      🗑️
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          </div>
-        </section>
-
         <!-- 資訊 -->
         <section v-show="tab==='info'">
           <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
@@ -688,12 +637,13 @@
               <div class="flex items-center justify-between gap-2">
                 <div>
                   <div class="font-bold text-[16px]">📌 固定資訊 & 備忘錄</div>
-                  <div class="text-[13px] hint mt-1">固定資訊先預填；底下可自由新增任何備註（欄位都可空）</div>
                 </div>
-                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-                        @click="openAddNote()">
-                  ➕ 新增備忘
-                </button>
+                <button class="btnPrimary rounded-2xl px-4 py-2 text-[12px] font-semibold shadow-soft inline-flex items-center gap-2 leading-none"
+  @click="openAddNote()"
+>
+  <span class="grid place-items-center w-5 h-5 text-[16px] leading-none">➕</span>
+  <span class="leading-none">新增備忘</span>
+</button>
               </div>
             </div>
 
@@ -1346,7 +1296,55 @@
                    v-model.number="editor.data.price" placeholder="價格（可空）">
           </div>
 
-          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.link" placeholder="網址（可空）">
+          <!-- ✅ 多網址（可新增多筆 + 可命名） -->
+<div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+  <div class="flex items-center justify-between">
+    <div class="font-semibold">🔗 網址（可多筆）</div>
+    <button type="button"
+            class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+            @click="addLinkRow()">
+      ➕ 新增網址
+    </button>
+  </div>
+
+  <div class="mt-3 grid gap-2" v-if="(editor.data.links||[]).length">
+    <div v-for="(lk,idx) in editor.data.links" :key="'lk-'+idx"
+         class="rounded-2xl p-3 border bg-white/70"
+         style="border-color: var(--line);">
+
+      <div class="grid grid-cols-3 gap-2">
+        <input class="input rounded-2xl px-3 py-2 text-[13px] col-span-1"
+               v-model="lk.label"
+               placeholder="名稱（可空）" />
+        <input class="input rounded-2xl px-3 py-2 text-[13px] col-span-2"
+               v-model="lk.url"
+               placeholder="網址（必填）" />
+      </div>
+
+      <div class="mt-2 flex items-center justify-between">
+        <a v-if="lk.url"
+           :href="lk.url"
+           target="_blank"
+           class="text-[12px] underline decoration-baby/60">
+          預覽：{{ (lk.label && lk.label.trim()) ? lk.label : lk.url }}
+        </a>
+
+        <button type="button"
+                class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white"
+                style="border-color: var(--line); color:#ef4444;"
+                @click="editor.data.links.splice(idx,1)">
+          －
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <div v-else class="text-[12px] hint mt-2">
+    還沒有網址～按右上角「新增網址」可以加多筆
+  </div>
+</div>
+
           <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[90px]"
                     v-model="editor.data.note" placeholder="備註（可空）"></textarea>
 
@@ -1521,6 +1519,11 @@ createApp({
       data: JSON.parse(JSON.stringify(b))
     };
   },
+
+addLinkRow(){
+  this.editor.data.links ||= [];
+  this.editor.data.links.push({ label:"", url:"" });
+},
 
   exportData(){
     const dataStr = JSON.stringify(this.store, null, 2);
@@ -2042,37 +2045,98 @@ createApp({
 
     // ✅ 自動更新匯率（仍可手動改）
     async autoUpdateRates(){
-      try{
-        const res = await fetch("https://open.er-api.com/v6/latest/USD");
-        const js = await res.json();
-        const r = js.rates || {};
-        if(!r.TWD) throw new Error("No TWD rate");
-        const usdToTwd = Number(r.TWD);
+  try{
+    // 取出目前你有用到的幣別代碼（排除 TWD）
+    const codes = (this.activeTrip.currencies || [])
+      .map(c => c.code)
+      .filter(code => code && code !== "TWD");
 
-        for(const c of this.activeTrip.currencies){
-          if(c.code === "TWD"){ c.rateToTWD = 1; continue; }
-          const usdToCur = Number(r[c.code]);
-          if(!usdToCur) continue;
-          const curToUsd = 1 / usdToCur;
-          c.rateToTWD = Number((curToUsd * usdToTwd).toFixed(6));
-        }
-        this.persist();
-        alert("已更新匯率（仍可手動調整）");
-      }catch(e){
-        alert("自動更新匯率失敗（可能是 API 暫時不可用）。你可以先手動輸入。");
+    // Frankfurter：用 USD 當基準，一次抓 USD->TWD 和 USD->其他幣
+    const symbols = ["TWD", ...codes].join(",");
+
+    const res = await fetch(`https://api.frankfurter.dev/v1/latest?base=USD&symbols=${encodeURIComponent(symbols)}`);
+    const js = await res.json();
+    const r = js.rates || {};
+
+    if(!r.TWD) throw new Error("No TWD rate from API");
+
+    const usdToTwd = Number(r.TWD);
+
+    const missing = [];
+
+    for(const c of this.activeTrip.currencies){
+      if(c.code === "TWD"){ c.rateToTWD = 1; continue; }
+
+      const usdToCur = Number(r[c.code]);
+      if(!usdToCur){
+        missing.push(c.code);
+        continue; // 這個幣別 API 沒提供，就保留你手動輸入的匯率
       }
-    },
+
+      // 你要的是：1 單位外幣 = 多少 TWD
+      // 若 1 USD = usdToCur CUR 且 1 USD = usdToTwd TWD
+      // 則 1 CUR = usdToTwd / usdToCur TWD
+      c.rateToTWD = Number((usdToTwd / usdToCur).toFixed(6));
+    }
+
+    this.persist();
+
+    if(missing.length){
+      alert(`已更新匯率，但以下幣別 API 沒提供，保留原本手動值：${missing.join(", ")}`);
+    }else{
+      alert("已更新匯率（仍可手動調整）");
+    }
+
+  }catch(e){
+    alert("自動更新匯率失敗（可能是網路/CORS/API 服務異常）。你可以先手動輸入。");
+    console.error(e);
+  }
+},
 
     // ---------- fav ----------
     openAddFav(){
       this.editor = {
         open:true, type:"fav", title:"➕ 新增收藏", mode:"new", refId:"",
-        data:{ id:this.uid(), category:"", area:"未分類地區", name:"", price:null, currency:"KRW", qty:1, place:"", buyer:"", link:"", image:"", note:"" }
+        data:{ id:this.uid(), category:"", area:"未分類地區", name:"", price:null, currency:"KRW", qty:1, place:"", buyer:"", links:[], image:"", note:"" }
       };
     },
-    editFav(it){
-      this.editor = { open:true, type:"fav", title:"✏️ 編輯收藏", mode:"edit", refId:it.id, data: JSON.parse(JSON.stringify(it)) };
-    },
+  editFav(it){
+  // 1️⃣先複製一份資料（避免直接改到原資料）
+  const copy = JSON.parse(JSON.stringify(it));
+
+  // 2️⃣ 如果沒有 links，就先補一個空陣列
+  if(!Array.isArray(copy.links)){
+    copy.links = [];
+  }
+
+  // 3️⃣如果是舊資料（只有 link，沒有 links）
+  if(copy.link && typeof copy.link === "string"){
+    const oldUrl = copy.link.trim();
+
+    // 有舊網址才轉
+    if(oldUrl){
+      copy.links.push({
+        label: "",     // 名稱先空白
+        url: oldUrl    // 舊網址放進來
+      });
+    }
+
+    // 4️⃣ 刪掉舊欄位，避免之後混亂
+    delete copy.link;
+  }
+
+  // 5️⃣ 打開編輯視窗
+  this.editor = {
+    open:true,
+    type:"fav",
+    title:"✏️ 編輯收藏",
+    mode:"edit",
+    refId: it.id,
+    data: copy
+  };
+},
+
+
     removeFav(id){
       if(!confirm("刪除此收藏？")) return;
       this.activeTrip.fav = this.activeTrip.fav.filter(x=>x.id!==id);
@@ -2241,6 +2305,9 @@ if(t==="infoBlock"){
       }
 
       if(t==="fav"){
+data.links = (data.links||[])
+  .map(x=>({ label:(x.label||""), url:(x.url||"").trim() }))
+  .filter(x=>x.url);
         if(this.editor.mode==="new"){
           this.activeTrip.fav.unshift(data);
         }else{
