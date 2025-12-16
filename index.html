@@ -1660,8 +1660,20 @@ body::before{
             <div class="font-semibold">🖼️ 圖片（可空）</div>
             <input class="mt-2 text-[13px]" type="file" accept="image/*" @change="onPickSingleImageToEditor($event)">
             <div class="mt-3" v-if="editor.data.image">
-              <img :src="editor.data.image" class="w-full max-h-56 object-cover rounded-2xl border" style="border-color: var(--line);">
-            </div>
+  <div class="relative">
+    <img :src="editor.data.image"
+         class="w-full max-h-56 object-cover rounded-2xl border"
+         style="border-color: var(--line);" />
+
+    <!-- ✅ 移除照片 -->
+    <button type="button"
+            class="absolute top-2 right-2 w-10 h-10 rounded-2xl bg-white/85 border shadow-soft grid place-items-center"
+            style="border-color: var(--line); color:#ef4444;"
+            @click="editor.data.image='';">
+      ✖
+    </button>
+  </div>
+</div>
           </div>
         </template>
 
@@ -1835,6 +1847,24 @@ watch:{
     }
   },
  methods:{
+async fileToJpegDataURL(file, maxSize=1200, quality=0.85){
+  const imgURL = await this.readFileAsDataURL(file);
+  const img = new Image();
+  await new Promise((res, rej)=>{ img.onload=res; img.onerror=rej; img.src=imgURL; });
+
+  const iw = img.width, ih = img.height;
+  const scale = Math.min(1, maxSize / Math.max(iw, ih));
+  const w = Math.round(iw * scale);
+  const h = Math.round(ih * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+
+  return canvas.toDataURL("image/jpeg", quality);
+},
+
 mountFavCategorySortable(){
   // Modal 沒開或沒 activeTrip 就不做
   if(!this.openFavCategoryManager || !this.activeTrip) return;
@@ -2041,9 +2071,15 @@ removeTripBackground(){
 },
 
     persist(){
-      localStorage.setItem("tripbook_store_v2", JSON.stringify(this.store));
-      if(this.activeTripId) localStorage.setItem("tripbook_activeTripId_v2", this.activeTripId);
-    },
+  try{
+    localStorage.setItem("tripbook_store_v2", JSON.stringify(this.store));
+    if(this.activeTripId) localStorage.setItem("tripbook_activeTripId_v2", this.activeTripId);
+  }catch(e){
+    console.error(e);
+    alert("⚠️ 儲存失敗：可能是照片太大導致瀏覽器儲存空間不足。\n建議：移除照片 / 改用較小圖片 / 或我可以幫你加自動壓縮。");
+    // 不中斷畫面操作（至少不會卡住）
+  }
+},
     uid(){ return Math.random().toString(16).slice(2) + Date.now().toString(16); },
     seedInfoBlocks(){
   return [
@@ -2950,12 +2986,13 @@ data.links = (data.links||[])
       }
       ev.target.value="";
     },
-    async onPickSingleImageToEditor(ev){
-      const f = (ev.target.files||[])[0];
-      if(!f) return;
-      this.editor.data.image = await this.readFileAsDataURL(f);
-      ev.target.value="";
-    },
+   async onPickSingleImageToEditor(ev){
+  const f = (ev.target.files||[])[0];
+  if(!f) return;
+  this.editor.data.image = await this.fileToJpegDataURL(f, 1200, 0.85);
+  ev.target.value="";
+},
+
     async onPickReceipt(ev){
       const f = (ev.target.files||[])[0];
       if(!f) return;
