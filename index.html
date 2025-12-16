@@ -413,7 +413,6 @@ body::before{
     <div class="font-semibold">{{ md(d) }}</div>
     <div class="text-[11px] hint">{{ dow(d) }}</div>
   </button>
-</div>
   </div>
 </div>
 
@@ -709,21 +708,27 @@ body::before{
                 </div>
               </div>
 
-              <div class="mt-3 flex gap-2 overflow-x-auto pb-2">
-                <button class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
-                        :class="favFilter==='' ? 'segActive':'bg-white/70 hover:bg-white'"
-                        style="border-color: var(--line);"
-                        @click="favFilter=''">
-                  全部
-                </button>
-                <button v-for="c in activeTrip.favCategories" :key="'fc-'+c"
-                        class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
-                        :class="favFilter===c ? 'segActive':'bg-white/70 hover:bg-white'"
-                        style="border-color: var(--line);"
-                        @click="favFilter=c">
-                  {{ c }}
-                </button>
-              </div>
+              <div class="mt-3 flex gap-2 overflow-x-auto pb-2 scrollX relative z-10">
+  <button
+    class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+    :class="favFilter==='' ? 'segActive':'bg-white/70 hover:bg-white'"
+    style="border-color: var(--line);"
+    @click.stop.prevent="setFavFilter('')"
+  >
+    全部
+  </button>
+
+  <button
+    v-for="c in activeTrip.favCategories"
+    :key="'fc-'+c"
+    class="shrink-0 rounded-2xl px-3 py-2 text-[13px] border"
+    :class="favFilter===c ? 'segActive':'bg-white/70 hover:bg-white'"
+    style="border-color: var(--line);"
+    @click.stop.prevent="setFavFilter(c)"
+  >
+    {{ c }}
+  </button>
+</div>
             </div>
 
             <div class="p-4">
@@ -1351,6 +1356,63 @@ body::before{
   </div>
 </div>
 
+<!-- Fav Category Manager -->
+<div v-if="openFavCategoryManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
+  <div class="absolute inset-0 bg-black/25" @click="openFavCategoryManager=false"></div>
+
+  <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4
+              max-h-[85vh] overflow-y-auto"
+       style="border-color: var(--line);">
+
+    <div class="flex items-center justify-between">
+      <div class="font-bold text-[16px]">🏷️ 收藏類型</div>
+      <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+              @click="openFavCategoryManager=false">✖</button>
+    </div>
+
+    <!-- 新增類型 -->
+    <div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+      <div class="font-semibold">➕ 新增類型</div>
+      <div class="mt-2 flex gap-2">
+        <input class="input rounded-2xl px-3 py-2 text-[13px] flex-1"
+               v-model="newFavCategory"
+               placeholder="輸入類型（例：甜點/酒吧/演唱會）"
+               @keydown.enter="addFavCategory()">
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                @click="addFavCategory()">
+          新增
+        </button>
+      </div>
+      <div class="text-[12px] hint mt-2">刪除類型不會刪掉收藏項目，只是不再出現在選單。</div>
+    </div>
+
+   <!-- 類型清單（可拖曳排序） -->
+<div id="favCatList" class="mt-4 space-y-2">
+  <div v-for="c in activeTrip.favCategories" :key="'fcm-'+c"
+       class="rounded-2xl p-3 border bg-white/70 flex items-center justify-between gap-2"
+       style="border-color: var(--line);">
+
+    <!-- 拖曳把手 -->
+    <div class="flex items-center gap-2 min-w-0">
+      <span class="dragHandle cursor-grab select-none text-[16px] opacity-60">☰</span>
+      <div class="font-semibold truncate">{{ c }}</div>
+    </div>
+
+    <button class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white grid place-items-center"
+            style="border-color: var(--line); color:#ef4444;"
+            @click.stop="removeFavCategory(c)">
+      －
+    </button>
+  </div>
+
+  <div v-if="!activeTrip.favCategories || activeTrip.favCategories.length===0"
+       class="rounded-2xl p-4 border bg-white/65 text-center hint"
+       style="border-color: var(--line);">
+    目前沒有類型～先新增一個吧 ✨
+  </div>
+</div>
+</div>
+</div>
 
 
   <!-- Generic editor modal -->
@@ -1695,14 +1757,20 @@ body::before{
 
 <script>
 const { createApp } = Vue;
+function loadStore(){
+  const raw = localStorage.getItem("tripbook_store_v2");
+  if(raw){
+    try{ return JSON.parse(raw); }catch(e){}
+  }
+  return { trips: [] };
+}
 
 createApp({
   data(){
     return {
       tab: "plan",
       nowText: "",
-      store: this.loadStore(),
-
+     store: loadStore(),
       openTripCatalog: false,
       openTripSettings: false,
       openCurrencyManager: false,
@@ -1720,6 +1788,9 @@ createApp({
 
       // fav category add
       newFavCategory: "",
+
+        // ✅ 收藏類型拖曳排序（Sortable instance）
+      favCatSortable: null,
 
       // weather
       weatherQuery: "",
@@ -1739,6 +1810,15 @@ createApp({
       }
     }
   },
+watch:{
+  openFavCategoryManager(v){
+    if(v){
+      this.$nextTick(()=> this.mountFavCategorySortable());
+    }else{
+      this.unmountFavCategorySortable();
+    }
+  }
+},
   computed:{
     activeTrip(){
       return this.store.trips.find(t=>t.id===this.activeTripId) || null;
@@ -1755,6 +1835,95 @@ createApp({
     }
   },
  methods:{
+mountFavCategorySortable(){
+  // Modal 沒開或沒 activeTrip 就不做
+  if(!this.openFavCategoryManager || !this.activeTrip) return;
+
+  const el = document.getElementById("favCatList");
+  if(!el) return;
+
+  // 先清掉舊的
+  if(this.favCatSortable){
+    this.favCatSortable.destroy();
+    this.favCatSortable = null;
+  }
+
+  this.favCatSortable = Sortable.create(el, {
+    animation: 180,
+    handle: ".dragHandle",     // ✅ 只能抓把手拖曳
+    delay: 200,                // ✅ 手機好用（長按拖）
+    delayOnTouchOnly: true,
+    ghostClass: "opacity-60",
+    onEnd: (evt)=>{
+      const arr = (this.activeTrip.favCategories || []).slice();
+      const moved = arr.splice(evt.oldIndex, 1)[0];
+      arr.splice(evt.newIndex, 0, moved);
+      this.activeTrip.favCategories = arr;
+      this.persist();
+    }
+  });
+},
+
+unmountFavCategorySortable(){
+  if(this.favCatSortable){
+    this.favCatSortable.destroy();
+    this.favCatSortable = null;
+  }
+},
+normalizeAndSortFavCategories(){
+  if(!this.activeTrip) return;
+
+  const src = Array.isArray(this.activeTrip.favCategories) ? this.activeTrip.favCategories : [];
+  const out = [];
+  const seen = new Set();
+
+  for(const raw of src){
+    const v = String(raw ?? "").trim();
+    if(!v) continue;
+    if(v === "全部") continue;     // 可選：避免跟「全部」按鈕重複
+    if(seen.has(v)) continue;
+    seen.add(v);
+    out.push(v);
+  }
+
+  // ✅ 自動排序（中文也 OK）
+  out.sort((a,b)=>a.localeCompare(b, "zh-Hant"));
+
+  this.activeTrip.favCategories = out;
+
+  // 如果當前篩選值被 trim/刪掉了，重置回全部
+  if(this.favFilter && !out.includes(String(this.favFilter).trim())){
+    this.favFilter = "";
+  }
+},
+normalizeFavCategories(){
+  if(!this.activeTrip) return;
+
+  const src = Array.isArray(this.activeTrip.favCategories) ? this.activeTrip.favCategories : [];
+  const out = [];
+  const seen = new Set();
+
+  for(const raw of src){
+    const v = String(raw ?? "").trim();   // ✅ 去頭尾空白
+    if(!v) continue;                     // ✅ 空字串不要
+    if(seen.has(v)) continue;            // ✅ 去重
+    seen.add(v);
+    out.push(v);
+  }
+
+  this.activeTrip.favCategories = out;
+
+  // 如果目前 filter 指到一個被 trim 後不存在的值，就重置
+  if(this.favFilter && !seen.has(String(this.favFilter).trim())){
+    this.favFilter = "";
+  }
+},
+
+setFavFilter(v){
+  this.favFilter = v;
+  // 讓你能在 console 直接確認有沒有改到（可留可刪）
+  // console.log("favFilter =", this.favFilter);
+},
   editInfoBlock(b){
     this.editor = {
       open:true,
@@ -1791,7 +1960,6 @@ removeInfoBlock(id){
   this.activeTrip.infoBlocks = (this.activeTrip.infoBlocks||[]).filter(x=>x.id!==id);
   this.persist();
 },
-
   exportData(){
     const dataStr = JSON.stringify(this.store, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
@@ -1959,6 +2127,8 @@ selectTrip(id){
     afterTripSelected(){
       if(!this.activeTrip) return;
       this.ensureTripShape(this.activeTrip);
+this.normalizeAndSortFavCategories();
+  this.normalizeFavCategories(); // ✅ 進行程就清掉重複/空白
       const days = this.tripDays(this.activeTrip);
 const ok = (this.activeDay==="_unscheduled") || days.includes(this.activeDay);
 this.activeDay = ok ? this.activeDay : (days[0] || "_unscheduled");
@@ -2542,18 +2712,30 @@ openRateLink(){
       });
       return groups;
     },
-    addFavCategory(){
-      const c = (this.newFavCategory||"").trim();
-      if(!c) return;
-      if(this.activeTrip.favCategories.includes(c)) return alert("已存在此類型");
-      this.activeTrip.favCategories.push(c);
-      this.newFavCategory="";
-      this.persist();
-    },
+ addFavCategory(){
+  const c = String(this.newFavCategory || "").trim();
+  if(!c) return;
+
+  if(c === "全部"){
+    alert("「全部」是保留選項，不能當作類型");
+    this.newFavCategory = "";
+    return;
+  }
+
+  this.activeTrip.favCategories ||= [];
+  this.activeTrip.favCategories.push(c);
+
+  // ✅ 新增後：去重 + trim + 排序
+  this.normalizeAndSortFavCategories();
+
+  this.newFavCategory = "";
+  this.persist();
+},
     removeFavCategory(c){
       if(!confirm("刪除此類型？（不會刪除已存在的收藏項目，只是不再出現在選單）")) return;
       this.activeTrip.favCategories = this.activeTrip.favCategories.filter(x=>x!==c);
       if(this.favFilter===c) this.favFilter="";
+this.normalizeAndSortFavCategories();
       this.persist();
     },
 
