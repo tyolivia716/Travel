@@ -1264,23 +1264,22 @@ body::before{
   <div class="absolute inset-0 bg-black/25" @click="openCurrencyManager=false"></div>
 
   <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4
-              max-h-[85vh] overflow-y-auto"
-       style="border-color: var(--line);">
+            max-h-[85vh] overflow-y-auto overflow-x-hidden">
 
-    <div class="flex items-center justify-between gap-2">
+    <div class="flex flex-wrap items-center justify-between gap-2">
       <div class="font-bold text-[16px]">💱 匯率設定</div>
       <div class="flex items-center gap-2">
-        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft whitespace-nowrap"
                 @click="autoUpdateRates()">
           🔄 自動更新
         </button>
 
-        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft whitespace-nowrap"
                 @click="openRateLink()">
           📈 實時匯率
         </button>
 
-        <button class="btnPrimary rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+        <button class="btnPrimary rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white whitespace-nowrap"
                 @click="openCurrencyManager=false">
           ✖
         </button>
