@@ -1260,106 +1260,99 @@ body::before{
   </div>
 
   <!-- Currency Manager -->
-  <div v-if="openCurrencyManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
-    <div class="absolute inset-0 bg-black/25" @click="openCurrencyManager=false"></div>
-    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
-         style="border-color: var(--line);">
-      <div class="flex items-center justify-between gap-2">
-        <div class="font-bold text-[16px]">💱 匯率設定</div>
-        <div class="flex items-center gap-2">
-          <!-- ✅ 自動抓匯率（仍可手動改） -->
-          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-        @click="autoUpdateRates()">
-  🔄 自動更新
-</button>
+<div v-if="openCurrencyManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
+  <div class="absolute inset-0 bg-black/25" @click="openCurrencyManager=false"></div>
 
-<!-- ✅ 新增：實時匯率（開 MSN 匯率換算器） -->
-<button
-  class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-  @click="openRateLink()"
->
-  📈 實時匯率
-</button>
+  <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4
+              max-h-[85vh] overflow-y-auto"
+       style="border-color: var(--line);">
 
-<button class="btnPrimary rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
-        @click="openCurrencyManager=false">
-  ✖
-</button>
-        </div>
+    <div class="flex items-center justify-between gap-2">
+      <div class="font-bold text-[16px]">💱 匯率設定</div>
+      <div class="flex items-center gap-2">
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                @click="autoUpdateRates()">
+          🔄 自動更新
+        </button>
+
+        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+                @click="openRateLink()">
+          📈 實時匯率
+        </button>
+
+        <button class="btnPrimary rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+                @click="openCurrencyManager=false">
+          ✖
+        </button>
       </div>
+    </div>
 
-      <div class="mt-3 text-[13px] hint">
-        匯率是「1 單位外幣 = 多少台幣」。例如 KRW 0.0212 表示 ₁₀₀₀ KRW ≈ 21.2 TWD
-      </div>
+    <div class="mt-3 text-[13px] hint">
+      匯率是「1 單位外幣 = 多少台幣」。例如 KRW 0.0212 表示 ₁₀₀₀ KRW ≈ 21.2 TWD
+    </div>
 
-      <div class="mt-4 space-y-2 max-h-[55vh] overflow-auto pr-1">
-        <div v-for="c in activeTrip.currencies" :key="c.code"
-             class="rounded-2xl p-3 border bg-white/70 flex items-center gap-2"
-             style="border-color: var(--line);">
-          <div class="font-bold w-14">{{ c.code }}</div>
-          <input class="input rounded-2xl px-3 py-2 text-[13px] flex-1"
-                 v-model="c.name" placeholder="名稱（選填）" @input="persist()">
-          <input class="input rounded-2xl px-3 py-2 text-[13px] w-28 mono"
-                 type="number" step="0.000001" v-model.number="c.rateToTWD" @input="persist()">
-          <button v-if="c.code!=='TWD'" class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white"
+    <!-- 幣別清單 -->
+    <div class="mt-4 space-y-2">
+      <div v-for="c in activeTrip.currencies" :key="c.code"
+           class="rounded-2xl p-3 border bg-white/70"
+           style="border-color: var(--line);">
+
+        <div class="flex items-center justify-between">
+          <div class="font-bold text-[14px]">{{ c.code }}</div>
+
+          <button v-if="c.code!=='TWD'"
+                  class="w-9 h-9 rounded-2xl border bg-white/70 hover:bg-white grid place-items-center"
                   style="border-color: var(--line); color:#ef4444;"
                   @click="removeCurrency(c.code)">
             －
           </button>
         </div>
-      </div>
 
-      <div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
-        <div class="font-semibold">➕ 新增幣別</div>
-        <div class="mt-2 grid grid-cols-3 gap-2">
-          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="newCur.code" placeholder="代碼(如 JPY)">
-          <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="newCur.name" placeholder="名稱(選填)">
-          <input class="input rounded-2xl px-3 py-2 text-[13px] mono" type="number" step="0.000001"
-                 v-model.number="newCur.rateToTWD" placeholder="匯率">
+        <div class="mt-2">
+          <input class="input rounded-2xl px-3 py-2 text-[13px] w-full"
+                 v-model="c.name"
+                 placeholder="名稱（選填）"
+                 @input="persist()">
         </div>
-        <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft mt-3"
-                @click="addCurrency()">
-          新增
-        </button>
+
+        <div class="mt-2">
+          <input class="input rounded-2xl px-3 py-2 text-[13px] w-full mono"
+                 type="number" step="0.000001"
+                 v-model.number="c.rateToTWD"
+                 @input="persist()">
+          <div class="text-[11px] hint mt-1">1 {{ c.code }} = ? TWD</div>
+        </div>
+
       </div>
     </div>
-  </div>
 
-  <!-- Fav category manager -->
-  <div v-if="openFavCategoryManager" class="fixed inset-0 z-[60] grid place-items-center px-4">
-    <div class="absolute inset-0 bg-black/25" @click="openFavCategoryManager=false"></div>
-    <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+    <!-- ✅ 新增幣別（你原本那塊加回來 + 手機不爆版） -->
+    <div class="mt-4 rounded-3xl p-4 bg-white/70 border"
          style="border-color: var(--line);">
-      <div class="flex items-center justify-between">
-        <div class="font-bold text-[16px]">🏷️ 收藏類型</div>
-        <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openFavCategoryManager=false">✖</button>
+      <div class="font-semibold">➕ 新增幣別</div>
+
+      <div class="mt-2 grid grid-cols-1 gap-2">
+        <input class="input rounded-2xl px-3 py-2 text-[13px]"
+               v-model="newCur.code" placeholder="代碼（如 JPY）">
+
+        <input class="input rounded-2xl px-3 py-2 text-[13px]"
+               v-model="newCur.name" placeholder="名稱（選填）">
+
+        <input class="input rounded-2xl px-3 py-2 text-[13px] mono"
+               type="number" step="0.000001"
+               v-model.number="newCur.rateToTWD" placeholder="匯率（1 外幣 = ? TWD）">
       </div>
 
-      <div class="mt-4 space-y-2">
-        <div v-for="c in activeTrip.favCategories" :key="'cat-'+c"
-             class="rounded-2xl p-3 border bg-white/70 flex items-center justify-between"
-             style="border-color: var(--line);">
-          <div class="font-semibold">{{ c }}</div>
-          <button class="w-10 h-10 rounded-2xl border bg-white/70 hover:bg-white"
-                  style="border-color: var(--line); color:#ef4444;"
-                  @click="removeFavCategory(c)">
-            －
-          </button>
-        </div>
-      </div>
-
-      <div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
-        <div class="font-semibold">➕ 新增類型</div>
-        <div class="mt-2 flex gap-2">
-          <input class="input rounded-2xl px-3 py-2 text-[13px] flex-1" v-model="newFavCategory" placeholder="例如：拉麵 / 咖啡 / 逛街">
-          <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-                  @click="addFavCategory()">
-            新增
-          </button>
-        </div>
-      </div>
+      <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft mt-3 w-full"
+              @click="addCurrency()">
+        新增
+      </button>
     </div>
+
   </div>
+</div>
+
+
 
   <!-- Generic editor modal -->
   <div v-if="editor.open" class="fixed inset-0 z-[70] grid place-items-center px-4">
@@ -2387,20 +2380,39 @@ this.activeTrip.itinerary = next;
 
     // ---------- currencies ----------
     addCurrency(){
-      const code = (this.newCur.code||"").trim().toUpperCase();
-      if(!code) return alert("請輸入幣別代碼（例如 JPY）");
-      if(this.activeTrip.currencies.some(c=>c.code===code)) return alert("已存在此幣別");
-      const rate = Number(this.newCur.rateToTWD||0);
-      if(!rate || rate<=0) return alert("請輸入正確匯率");
-      this.activeTrip.currencies.push({ code, name:(this.newCur.name||""), rateToTWD: rate });
-      this.newCur = { code:"", name:"", rateToTWD: 1 };
-      this.persist();
-    },
-    removeCurrency(code){
-      if(!confirm("刪除幣別？")) return;
-      this.activeTrip.currencies = this.activeTrip.currencies.filter(c=>c.code!==code);
-      this.persist();
-    },
+  const code = (this.newCur.code || "").trim().toUpperCase();
+  if(!code){
+    alert("請輸入幣別代碼");
+    return;
+  }
+
+  // 確保陣列存在
+  this.activeTrip.currencies ||= [];
+
+  // 檢查重複
+  if(this.activeTrip.currencies.some(c => c.code === code)){
+    alert("此幣別已存在");
+    return;
+  }
+
+  const item = {
+    code,
+    name: (this.newCur.name || "").trim(),
+    rateToTWD: Number(this.newCur.rateToTWD) || 1
+  };
+
+  // ✅ 關鍵：用「整個新陣列」取代，確保 Vue 更新
+  this.activeTrip.currencies = [
+    ...this.activeTrip.currencies,
+    item
+  ];
+
+  // reset
+  this.newCur = { code:"", name:"", rateToTWD:1 };
+
+  this.persist();
+},
+
 openRateLink(){
   window.open(
     "https://www.msn.com/zh-tw/money/tools/currencyconverter?ocid=winp2fpent&bundles=staging&id=avff1h",
@@ -2648,36 +2660,46 @@ if(t==="infoBlock"){
         this.persist(); this.closeEditor(); return;
       }
 
-     if(t==="plan"){
-  if(this.editor.mode==="new"){
-    const targetDate = data.date || "_unscheduled";
-    this.activeTrip.itinerary[targetDate] ||= [];
-    this.activeTrip.itinerary[targetDate].push(data);
-  }else{
-    // ✅ 編輯時允許改日期：跨日搬移
-    const toKey = (data.date && String(data.date).trim()) ? String(data.date) : "_unscheduled";
+    if (t === "plan") {
+  const toKey = (data.date && String(data.date).trim()) ? String(data.date) : "_unscheduled";
+
+  if (this.editor.mode === "new") {
+    this.activeTrip.itinerary[toKey] ||= [];
+    this.activeTrip.itinerary[toKey].push(data);
+
+  } else {
     const fromKey = this.findPlanBucketById(this.editor.refId);
 
-    if(!fromKey){
+    // 找不到來源：當成補寫
+    if (!fromKey) {
       this.activeTrip.itinerary[toKey] ||= [];
       this.activeTrip.itinerary[toKey].push(data);
-    }else if(fromKey === toKey){
+
+    } else if (fromKey === toKey) {
+      // ✅ 同一天 / 同待放：用 splice 取代 index assignment，確保畫面刷新
       const arr = this.activeTrip.itinerary[fromKey] || [];
-      const idx = arr.findIndex(x=>x.id===this.editor.refId);
-      if(idx>=0) arr[idx] = data;
-    }else{
+      const idx = arr.findIndex(x => x.id === this.editor.refId);
+      if (idx >= 0) arr.splice(idx, 1, data);
+
+    } else {
+      // ✅ 跨日搬移
       const moved = this.pullPlanItemFromBucket(fromKey, this.editor.refId) || data;
       moved.date = (toKey === "_unscheduled") ? "" : toKey;
       Object.assign(moved, data);
 
       this.activeTrip.itinerary[toKey] ||= [];
       this.activeTrip.itinerary[toKey].push(moved);
+
+      // ✅ 如果你目前在待放區，且剛剛把它指派到某一天：自動跳到那天，使用者才不會覺得「沒反應」
+      if (this.activeDay === "_unscheduled" && toKey !== "_unscheduled") {
+        this.activeDay = toKey;
+      }
     }
   }
 
   this.persist();
   this.closeEditor();
-  this.$nextTick(()=> this.mountSortable());
+  this.$nextTick(() => this.mountSortable());
   return;
 }
       if(t==="note"){
@@ -2914,3 +2936,4 @@ data.links = (data.links||[])
 </script>
 </body>
 </html>
+
