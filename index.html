@@ -126,13 +126,31 @@
 }
 .dayPillActive .hint{ color: rgba(15,23,42,.65); }
 
-/* 橫滑視覺更順（不會醜醜的捲軸） */
+/* 橫滑視覺更順（✅ 保留滑桿版本） */
 .scrollX{
-  overflow-x:auto;
+  overflow-x: auto;
+  overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0,0,0,.3) transparent;
 }
-.scrollX::-webkit-scrollbar{ display:none; }
+
+/* Chrome / Edge / Safari */
+.scrollX::-webkit-scrollbar{
+  height: 6px;                 /* 👈 滑桿高度，可改 4~8 */
+}
+.scrollX::-webkit-scrollbar-track{
+  background: transparent;     /* 軌道透明 */
+}
+.scrollX::-webkit-scrollbar-thumb{
+  background-color: rgba(0,0,0,.3); /* 滑塊顏色 */
+  border-radius: 999px;        /* 圓角 */
+}
+.scrollX::-webkit-scrollbar-thumb:hover{
+  background-color: rgba(0,0,0,.45);
+}
 
 /* 底部 Nav 更浮一點 */
 .bottomFloat{
@@ -188,7 +206,6 @@ body::before{
   position: relative;
   z-index: 1;
 }
-ensureTripShape(t)
   </style>
 </head>
 
@@ -349,90 +366,127 @@ ensureTripShape(t)
         <section v-show="tab==='plan'">
           <div class="rounded-3xl bg-card shadow-soft border" style="border-color: var(--line);">
             <!-- Day scroller -->
-            <div class="p-4 border-b" style="border-color: var(--line);">
-              <div class="flex items-center justify-between">
-                <div class="font-bold text-[16px]">🗓️ 每日行程</div>
-                <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-                        @click="openAddPlanItem()">
-                  ➕ 新增
-                </button>
-              </div>
+<div class="p-4 border-b" style="border-color: var(--line);">
+  <div class="flex items-center justify-between">
+    <div class="font-bold text-[16px]">🗓️ 每日行程</div>
+    <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+            @click="openAddPlanItem()">
+      ➕ 新增
+    </button>
+  </div>
 
-             <div class="mt-3 gap-2 pb-2"
-     :class="tripDays(activeTrip).length >= 7
-       ? 'flex scrollX'
-       : 'grid grid-cols-[repeat(auto-fit,minmax(0,1fr))]'">
-                <button v-for="d in tripDays(activeTrip)" :key="activeTrip.id+'-'+d"
-        @click="switchDay(d)"
-       class="rounded-2xl px-3 py-2 text-[13px] shadow-insetSoft tap dayPill"
-        :class="[
-          activeDay===d ? 'dayPillActive' : '',
-          tripDays(activeTrip).length >= 7 ? 'shrink-0 w-[74px]' : 'w-full'
-        ]"
-        style="border-color: var(--line);">
-                  <div class="font-semibold">{{ md(d) }}</div>
-                  <div class="text-[11px] hint">{{ dow(d) }}</div>
-                </button>
-              </div>
+  <!-- ✅ 日期橫滑列（做成跟收藏一樣的結構） -->
+<div
+  class="mt-3 flex gap-2 pb-2 scrollX"
+  :class="(tripDays(activeTrip).length + 1) >= 7
+    ? 'flex-nowrap overflow-x-auto'
+    : 'flex-wrap overflow-x-hidden'"
+>
+  <!-- 待放 -->
+  <button
+    @click="switchDay('_unscheduled')"
+    class="dayPill tap shadow-insetSoft rounded-2xl px-3 py-2 text-[13px]"
+    :class="[
+      activeDay==='_unscheduled' ? 'dayPillActive' : '',
+      (tripDays(activeTrip).length + 1) >= 7 ? 'shrink-0 w-[92px]' : 'flex-1'
+    ]"
+    style="border-color: var(--line);"
+  >
+    <div class="font-semibold">🗂️ 待放</div>
+    <div class="text-[11px] hint">
+      {{ (activeTrip.itinerary._unscheduled||[]).length }} 筆
+    </div>
+  </button>
+
+  <!-- 日期 -->
+  <button
+    v-for="d in tripDays(activeTrip)"
+    :key="activeTrip.id+'-'+d"
+    @click="switchDay(d)"
+    class="dayPill tap shadow-insetSoft rounded-2xl px-3 py-2 text-[13px]"
+    :class="[
+      activeDay===d ? 'dayPillActive' : '',
+      (tripDays(activeTrip).length + 1) >= 7 ? 'shrink-0 w-[74px]' : 'flex-1'
+    ]"
+    style="border-color: var(--line);"
+  >
+    <div class="font-semibold">{{ md(d) }}</div>
+    <div class="text-[11px] hint">{{ dow(d) }}</div>
+  </button>
+</div>
+  </div>
+</div>
+
+              <!-- list -->
+<div class="p-4">
+  <div class="text-[13px] hint">👆 長按 0.2 秒即可拖曳排序（滑動觀看沒問題）</div>
+
+  <div class="mt-3" v-if="(activeTrip.itinerary[activeDay]||[]).length===0">
+    <div class="rounded-2xl p-4 border bg-white/65 text-center hint" style="border-color: var(--line);">
+      {{ activeDay==='_unscheduled' ? '待放區目前是空的～可以把還沒決定日期的先丟這裡 ✨' : '這天還沒安排～按右上角 ➕ 新增 ✨' }}
+    </div>
+  </div>
+
+  <div class="mt-3 space-y-3" :id="'planList-'+activeDay">
+    <div v-for="item in (activeTrip.itinerary[activeDay]||[])" :key="item.id"
+         class="rounded-3xl p-4 bg-white/70 border shadow-soft"
+         style="border-color: var(--line);">
+
+      <div class="flex items-start justify-between gap-3">
+        <div class="min-w-0">
+          <!-- ✅ 若在待放區：顯示指派日期（但仍保留編輯/刪除） -->
+          <div class="mb-2" v-if="activeDay==='_unscheduled'">
+            <select class="input rounded-xl px-2 py-1 text-[12px]"
+                    @change="assignPlanDate(item, $event.target.value)">
+              <option value="">指派日期…</option>
+              <option v-for="d in tripDays(activeTrip)" :key="d" :value="d">
+                {{ md(d) }} {{ dow(d) }}
+              </option>
+            </select>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div class="text-[12px] px-2 py-1 rounded-xl chip">
+              {{ item.time || "（未填時間）" }}
             </div>
-
-            <!-- list -->
-            <div class="p-4">
-              <div class="text-[13px] hint">👆 長按 0.2 秒即可拖曳排序（滑動觀看沒問題）</div>
-
-              <div class="mt-3" v-if="(activeTrip.itinerary[activeDay]||[]).length===0">
-                <div class="rounded-2xl p-4 border bg-white/65 text-center hint" style="border-color: var(--line);">
-                  這天還沒安排～按右上角 ➕ 新增 ✨
-                </div>
-              </div>
-
-              <div class="mt-3 space-y-3" :id="'planList-'+activeDay">
-                <div v-for="item in (activeTrip.itinerary[activeDay]||[])" :key="item.id"
-                     class="rounded-3xl p-4 bg-white/70 border shadow-soft"
-                     style="border-color: var(--line);">
-                  <div class="flex items-start justify-between gap-3">
-                    <div class="min-w-0">
-                      <div class="flex items-center gap-2">
-                        <div class="text-[12px] px-2 py-1 rounded-xl chip">
-                          {{ item.time || "（未填時間）" }}
-                        </div>
-                        <div class="text-[12px] px-2 py-1 rounded-xl chip">
-                          {{ item.category || "未分類" }}
-                        </div>
-                      </div>
-                      <div class="mt-2 font-bold text-[16px] break-words">{{ item.title || "（未填標題）" }}</div>
-                      <div class="mt-1 text-[13px] hint break-words" v-if="item.place">📍 {{ item.place }}</div>
-                      <div class="mt-2 text-[13px] break-words" v-if="item.note">📝 {{ item.note }}</div>
-
-                      <div class="mt-2 flex flex-wrap gap-2" v-if="item.link || item.map">
-                        <a v-if="item.link" :href="item.link" target="_blank"
-                           class="text-[12px] underline decoration-baby/60">
-                          🔗 網址
-                        </a>
-                        <a v-if="item.map" :href="item.map" target="_blank"
-                           class="text-[12px] underline decoration-lavender/60">
-                          🗺️ 地圖
-                        </a>
-                      </div>
-
-                      <div class="mt-3 grid grid-cols-3 gap-2" v-if="(item.images||[]).length">
-                        <img v-for="(img,idx) in item.images" :key="idx" :src="img"
-                             class="w-full aspect-square object-cover rounded-2xl border"
-                             style="border-color: var(--line);" />
-                      </div>
-                    </div>
-
-                    <div class="flex flex-col gap-2 shrink-0">
-                      <button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="editPlanItem(item)">✏️</button>
-<button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="removePlanItem(item.id)">🗑️</button>
-
-                    </div>
-                  </div>
-                </div>
-              </div>
-
+            <div class="text-[12px] px-2 py-1 rounded-xl chip">
+              {{ item.category || "未分類" }}
             </div>
           </div>
+
+          <div class="mt-2 font-bold text-[16px] break-words">
+            {{ item.title || "（未填標題）" }}
+          </div>
+          <div class="mt-1 text-[13px] hint break-words" v-if="item.place">📍 {{ item.place }}</div>
+          <div class="mt-2 text-[13px] break-words" v-if="item.note">📝 {{ item.note }}</div>
+
+          <div class="mt-2 flex flex-wrap gap-2" v-if="item.link || item.map">
+            <a v-if="item.link" :href="item.link" target="_blank"
+               class="text-[12px] underline decoration-baby/60">
+              🔗 網址
+            </a>
+            <a v-if="item.map" :href="item.map" target="_blank"
+               class="text-[12px] underline decoration-lavender/60">
+              🗺️ 地圖
+            </a>
+          </div>
+
+          <div class="mt-3 grid grid-cols-3 gap-2" v-if="(item.images||[]).length">
+            <img v-for="(img,idx) in item.images" :key="idx" :src="img"
+                 class="w-full aspect-square object-cover rounded-2xl border"
+                 style="border-color: var(--line);" />
+          </div>
+        </div>
+
+        <div class="flex flex-col gap-2 shrink-0">
+          <button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="editPlanItem(item)">✏️</button>
+          <button class="btn bg-white/70 hover:bg-white tap actionBtn" @click="removePlanItem(item.id)">🗑️</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
         </section>
 
         <!-- 記帳 -->
@@ -1286,10 +1340,18 @@ ensureTripShape(t)
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
           </div>
 
-          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='plan'">
+         <div class="grid grid-cols-2 gap-2" v-if="editor.type==='plan'">
+  <select class="input rounded-2xl px-3 py-2 text-[13px]"
+          v-model="editor.data.date">
+    <option value="">（待放區）</option>
+    <option v-for="d in tripDays(activeTrip)" :key="d" :value="d">
+      {{ d }}
+    </option>
+  </select>
+</div>
+
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.category" placeholder="分類（例 午餐）">
-          </div>
 
           <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.title" placeholder="標題（可空）">
           <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.place" placeholder="地點（可空）">
@@ -1827,6 +1889,7 @@ removeTripBackground(){
     ensureTripShape(t){
       t.people ||= [];
       t.itinerary ||= {};
+      t.itinerary._unscheduled ||= [];
       t.expenses ||= [];
       t.notes ||= [];
       t.infoBlocks ||= this.seedInfoBlocks();
@@ -1846,12 +1909,15 @@ removeTripBackground(){
 
       t.city ||= "Seoul";
       for(const d of this.tripDays(t)){
-        if(!t.itinerary[d]) t.itinerary[d]=[];
-      }
-      if(!this.activeDay) this.activeDay = this.tripDays(t)[0] || "";
-    },
+  if(!t.itinerary[d]) t.itinerary[d]=[];
+}
 
-    selectTrip(id){
+if(!this.activeDay){
+  this.activeDay = this.tripDays(t)[0] || "_unscheduled";
+}
+}, // ✅ ensureTripShape 結束，這裡才是 methods 之間的逗號
+
+selectTrip(id){
       this.activeTripId = id;
       this.afterTripSelected();
       this.tab = "plan";
@@ -1861,7 +1927,8 @@ removeTripBackground(){
       if(!this.activeTrip) return;
       this.ensureTripShape(this.activeTrip);
       const days = this.tripDays(this.activeTrip);
-      this.activeDay = days.includes(this.activeDay) ? this.activeDay : (days[0]||"");
+const ok = (this.activeDay==="_unscheduled") || days.includes(this.activeDay);
+this.activeDay = ok ? this.activeDay : (days[0] || "_unscheduled");
       this.selectedExpenseDay = "";
       this.favFilter = "";
       this.$nextTick(()=> this.mountSortable());
@@ -1973,6 +2040,49 @@ switchDay(d){
   // ✅ DOM 更新後再 mount sortable
   this.$nextTick(()=> this.mountSortable());
 },
+// 找出某個行程 item 目前在哪個 bucket（YYYY-MM-DD 或 _unscheduled）
+findPlanBucketById(itemId){
+  const itin = this.activeTrip?.itinerary || {};
+  for(const k of Object.keys(itin)){
+    const arr = itin[k] || [];
+    if(arr.some(x => x.id === itemId)) return k;
+  }
+  return null;
+},
+
+// 從 bucket 移除並回傳該 item（找不到回 null）
+pullPlanItemFromBucket(bucketKey, itemId){
+  const arr = this.activeTrip.itinerary[bucketKey] || [];
+  const idx = arr.findIndex(x => x.id === itemId);
+  if(idx < 0) return null;
+  return arr.splice(idx, 1)[0];
+},
+
+// ✅ 待放區下拉「指派日期」：真的把 item 從 _unscheduled 搬到 해당日期（或反向）
+assignPlanDate(item, dateStr){
+  if(!this.activeTrip) return;
+
+  const toKey = (dateStr && String(dateStr).trim()) ? String(dateStr) : "_unscheduled";
+  const fromKey = this.findPlanBucketById(item.id);
+
+  if(!fromKey || fromKey === toKey) return;
+
+  // 1) 從原本 bucket 拿出
+  const moved = this.pullPlanItemFromBucket(fromKey, item.id);
+  if(!moved) return;
+
+  // 2) 寫回 item.date（讓之後編輯也知道它屬於哪天）
+  moved.date = (toKey === "_unscheduled") ? "" : toKey;
+
+  // 3) 塞進目標 bucket
+  this.activeTrip.itinerary[toKey] ||= [];
+  this.activeTrip.itinerary[toKey].push(moved);
+
+  this.persist();
+
+  // 4) 如果搬到目前 activeDay，重新掛 sortable（避免拖曳壞掉）
+  this.$nextTick(()=> this.mountSortable());
+},
 
     // ---------- plan ----------
     mountSortable(){
@@ -2002,21 +2112,34 @@ switchDay(d){
     syncDaysAfterTripEdit(){
       if(!this.activeTrip) return;
       const keep = this.activeTrip.itinerary || {};
-      const next = {};
-      for(const d of this.tripDays(this.activeTrip)){
-        next[d] = keep[d] || [];
-      }
-      this.activeTrip.itinerary = next;
+const next = { _unscheduled: keep._unscheduled || [] };
+
+for(const d of this.tripDays(this.activeTrip)){
+  next[d] = keep[d] || [];
+}
+
+this.activeTrip.itinerary = next;
       this.activeDay = this.tripDays(this.activeTrip)[0] || "";
       this.persist();
       this.$nextTick(()=> this.mountSortable());
     },
     openAddPlanItem(){
-      this.editor = {
-        open:true, type:"plan", title:"➕ 新增行程", mode:"new", refId:"",
-        data:{ id:this.uid(), time:"", category:"", title:"", place:"", map:"", link:"", note:"", images:[] }
-      };
-    },
+  this.editor = {
+    open:true, type:"plan", title:"➕ 新增行程", mode:"new", refId:"",
+    data:{
+      id: this.uid(),
+      date: (this.activeDay==="_unscheduled" ? "" : (this.activeDay||"")),
+      time: "",
+      category: "",
+      title: "",
+      place: "",
+      map: "",
+      link: "",
+      note: "",
+      images: []
+    }
+  };
+},
     editPlanItem(item){
       this.editor = {
         open:true, type:"plan", title:"✏️ 編輯行程", mode:"edit", refId:item.id,
@@ -2410,7 +2533,9 @@ switchDay(d){
     },
 
     // ---------- editor save/close ----------
-    closeEditor(){ this.editor.open=false; },
+    closeEditor(){
+  this.editor = { open:false, type:"", title:"", data:{}, mode:"new", refId:"" };
+},
     saveEditor(){
       const t = this.editor.type;
       const data = this.editor.data;
@@ -2462,19 +2587,38 @@ if(t==="infoBlock"){
         this.persist(); this.closeEditor(); return;
       }
 
-      if(t==="plan"){
-        if(this.editor.mode==="new"){
-          this.activeTrip.itinerary[this.activeDay].push(data);
-        }else{
-          const list = this.activeTrip.itinerary[this.activeDay]||[];
-          const idx = list.findIndex(x=>x.id===this.editor.refId);
-          if(idx>=0) list[idx]=data;
-        }
-        this.persist(); this.closeEditor();
-        this.$nextTick(()=> this.mountSortable());
-        return;
-      }
+     if(t==="plan"){
+  if(this.editor.mode==="new"){
+    const targetDate = data.date || "_unscheduled";
+    this.activeTrip.itinerary[targetDate] ||= [];
+    this.activeTrip.itinerary[targetDate].push(data);
+  }else{
+    // ✅ 編輯時允許改日期：跨日搬移
+    const toKey = (data.date && String(data.date).trim()) ? String(data.date) : "_unscheduled";
+    const fromKey = this.findPlanBucketById(this.editor.refId);
 
+    if(!fromKey){
+      this.activeTrip.itinerary[toKey] ||= [];
+      this.activeTrip.itinerary[toKey].push(data);
+    }else if(fromKey === toKey){
+      const arr = this.activeTrip.itinerary[fromKey] || [];
+      const idx = arr.findIndex(x=>x.id===this.editor.refId);
+      if(idx>=0) arr[idx] = data;
+    }else{
+      const moved = this.pullPlanItemFromBucket(fromKey, this.editor.refId) || data;
+      moved.date = (toKey === "_unscheduled") ? "" : toKey;
+      Object.assign(moved, data);
+
+      this.activeTrip.itinerary[toKey] ||= [];
+      this.activeTrip.itinerary[toKey].push(moved);
+    }
+  }
+
+  this.persist();
+  this.closeEditor();
+  this.$nextTick(()=> this.mountSortable());
+  return;
+}
       if(t==="note"){
         if(this.editor.mode==="new"){
           this.activeTrip.notes.unshift(data);
