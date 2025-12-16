@@ -53,12 +53,14 @@
     }
     html,body{ height:100%; }
     body{
-      font-family: "GenSenRoundedTW", "Noto Sans TC", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1200px 800px at 20% 0%, var(--bg2), transparent 60%),
-                  radial-gradient(900px 700px at 90% 10%, rgba(216,208,255,.45), transparent 55%),
-                  linear-gradient(180deg, var(--bg1), #f7faff);
-      color:#0f172a;
-    }
+  font-family: "GenSenRoundedTW", "Noto Sans TC", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  background:
+    radial-gradient(520px 320px at 12% 0%, rgba(158,197,255,.55), transparent 60%),
+    radial-gradient(620px 420px at 88% 8%, rgba(216,208,255,.45), transparent 60%),
+    radial-gradient(460px 360px at 50% 90%, rgba(207,227,255,.35), transparent 65%),
+    linear-gradient(180deg, #eef3fb 0%, #f7faff 100%);
+  color:#0f172a;
+}
     .safe-bottom { padding-bottom: calc(env(safe-area-inset-bottom) + 84px); }
     .glass { background: rgba(225,235,250,0.78); backdrop-filter: blur(10px); }
     .chip { border: 1px solid var(--line); background: rgba(255,255,255,.72); }
@@ -143,7 +145,50 @@
   width: 40px; height: 40px;
   border-radius: 18px;
 }
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(0,0,0,.015) 0px,
+      rgba(0,0,0,.015) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+  opacity:.35;
+  z-index:0;
+}
+#app{ position:relative; z-index:1; }
+:root{
+  --bg-photo: none;              /* 背景圖（url(...) 或 none） */
+  --bg-photo-opacity: .22;       /* 背景圖濃淡 0~0.5 建議 */
+  --bg-photo-blur: 2px;          /* 背景模糊，讓卡片更清楚 */
+}
 
+/* 背景圖層：疊在你原本漸層背景上 */
+body::before{
+  content:"";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background-image: var(--bg-photo);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-photo-opacity);
+  filter: saturate(.8) blur(var(--bg-photo-blur));
+}
+
+/* 確保你的 App 內容在背景圖之上 */
+#app{
+  position: relative;
+  z-index: 1;
+}
+ensureTripShape(t)
   </style>
 </head>
 
@@ -995,6 +1040,39 @@
             </div>
           </div>
         </div>
+<!-- ✅ 背景設定 -->
+<div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
+  <div class="flex items-center justify-between">
+    <div class="font-semibold">🎨 背景</div>
+    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white tap"
+            @click="removeTripBackground()">
+      移除
+    </button>
+  </div>
+
+  <div class="mt-2 text-[12px] hint">
+    可上傳一張當行程背景（會自動淡化+模糊，不影響閱讀）
+  </div>
+
+  <div class="mt-3 grid gap-3">
+    <input type="file" accept="image/*" @change="onPickTripBackground($event)" class="text-[13px]"/>
+
+    <div>
+      <div class="flex items-center justify-between">
+        <div class="text-[13px] font-semibold">濃淡</div>
+        <div class="text-[12px] hint mono">{{ Number(activeTrip.bgOpacity ?? 0.22).toFixed(2) }}</div>
+      </div>
+      <input type="range" min="0" max="0.5" step="0.01"
+             v-model.number="activeTrip.bgOpacity"
+             @input="persist(); applyTripBackground()"
+             class="w-full">
+    </div>
+
+    <div v-if="activeTrip.bgPhoto" class="rounded-3xl overflow-hidden border bg-white" style="border-color: var(--line);">
+      <img :src="activeTrip.bgPhoto" class="w-full h-32 object-cover" alt="">
+    </div>
+  </div>
+</div>
 
         <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
           <div class="font-semibold">📝 名稱 / 日期</div>
@@ -1638,6 +1716,37 @@ addLinkRow(){
       }
       return { trips: [] };
     },
+applyTripBackground(){
+  const photo = this.activeTrip?.bgPhoto || "";
+  const op = Number(this.activeTrip?.bgOpacity ?? 0.22);
+
+  document.documentElement.style.setProperty(
+    "--bg-photo",
+    photo ? `url(${photo})` : "none"
+  );
+  document.documentElement.style.setProperty(
+    "--bg-photo-opacity",
+    String(Math.min(0.5, Math.max(0, op)))
+  );
+},
+
+async onPickTripBackground(ev){
+  const f = (ev.target.files || [])[0];
+  if(!f) return;
+  const src = await this.readFileAsDataURL(f);
+  this.activeTrip.bgPhoto = src;
+  this.persist();
+  this.applyTripBackground();
+  ev.target.value = "";
+},
+
+removeTripBackground(){
+  this.activeTrip.bgPhoto = "";
+  this.activeTrip.bgOpacity = 0.22;
+  this.persist();
+  this.applyTripBackground();
+},
+
     persist(){
       localStorage.setItem("tripbook_store_v2", JSON.stringify(this.store));
       if(this.activeTripId) localStorage.setItem("tripbook_activeTripId_v2", this.activeTripId);
@@ -1732,6 +1841,9 @@ addLinkRow(){
         { code:"KRW", name:"韓元", rateToTWD: 0.0212 },
         { code:"JPY", name:"日圓", rateToTWD: 0.22 }
       ];
+      t.bgPhoto ||= "";          // 背景圖（DataURL）
+      t.bgOpacity ||= 0.22;      // 背景濃淡
+
       t.city ||= "Seoul";
       for(const d of this.tripDays(t)){
         if(!t.itinerary[d]) t.itinerary[d]=[];
@@ -1755,12 +1867,14 @@ addLinkRow(){
       this.$nextTick(()=> this.mountSortable());
       this.weatherQuery = this.activeTrip.city || "Seoul";
       this.refreshWeather();
+      this.applyTripBackground();
     },
     backToCatalog(){
       this.activeTripId = "";
       this.tab = "plan";
       this.openTripSettings=false;
       this.persist();
+      document.documentElement.style.setProperty("--bg-photo", "none");
     },
     deleteTrip(id){
       if(!confirm("確定要刪除此行程？")) return;
