@@ -1269,10 +1269,22 @@ body::before{
         <div class="flex items-center gap-2">
           <!-- ✅ 自動抓匯率（仍可手動改） -->
           <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-                  @click="autoUpdateRates()">
-            🔄 自動更新
-          </button>
-          <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white" @click="openCurrencyManager=false">✖</button>
+        @click="autoUpdateRates()">
+  🔄 自動更新
+</button>
+
+<!-- ✅ 新增：實時匯率（開 MSN 匯率換算器） -->
+<button
+  class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
+  @click="openRateLink()"
+>
+  📈 實時匯率
+</button>
+
+<button class="btnPrimary rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+        @click="openCurrencyManager=false">
+  ✖
+</button>
         </div>
       </div>
 
@@ -1931,7 +1943,7 @@ removeTripBackground(){
       t.currencies ||= [
         { code:"TWD", name:"台幣", rateToTWD: 1 },
         { code:"KRW", name:"韓元", rateToTWD: 0.0212 },
-        { code:"JPY", name:"日圓", rateToTWD: 0.22 }
+        { code:"JPY", name:"日圓", rateToTWD: 0.2033 }
       ];
       t.bgPhoto ||= "";          // 背景圖（DataURL）
       t.bgOpacity ||= 0.22;      // 背景濃淡
@@ -2389,7 +2401,13 @@ this.activeTrip.itinerary = next;
       this.activeTrip.currencies = this.activeTrip.currencies.filter(c=>c.code!==code);
       this.persist();
     },
-
+openRateLink(){
+  window.open(
+    "https://www.msn.com/zh-tw/money/tools/currencyconverter?ocid=winp2fpent&bundles=staging&id=avff1h",
+    "_blank",
+    "noopener"
+  );
+},
     // ✅ 自動更新匯率（仍可手動改）
     async autoUpdateRates(){
   try{
