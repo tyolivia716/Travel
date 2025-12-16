@@ -803,13 +803,13 @@ body::before{
                 </div>
                 <div class="flex gap-2">
   <!-- ✅ 新增固定資訊（左） -->
-  <button
-    class="btn rounded-2xl px-4 py-2 text-[12px] font-semibold bg-white/70 hover:bg-white shadow-soft inline-flex items-center gap-2 leading-none tap"
-    @click="openAddInfoBlock()"
-  >
-    <span class="grid place-items-center w-5 h-5 text-[16px] leading-none">📌</span>
-    <span class="leading-none">新增固定資訊</span>
-  </button>
+<button
+  class="btnPrimary rounded-2xl px-4 py-2 text-[12px] font-semibold shadow-soft tap"
+  @click="openAddInfoBlock()"
+>
+  <div class="leading-none">➕ 新增</div>
+  <div class="text-[11px] opacity-90 mt-0.5">固定資訊</div>
+</button> 
 
   <!-- ✅ 新增備忘（右，原本的） -->
   <button
