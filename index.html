@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>TripBook - ITZY Seoul 2026</title>
+  <title>Planary</title>
 
   <!-- Tailwind (CDN) -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -801,38 +801,76 @@ body::before{
                 <div>
                   <div class="font-bold text-[16px]">📌 固定資訊 & 備忘錄</div>
                 </div>
-                <button class="btnPrimary rounded-2xl px-4 py-2 text-[12px] font-semibold shadow-soft inline-flex items-center gap-2 leading-none"
-  @click="openAddNote()"
->
-  <span class="grid place-items-center w-5 h-5 text-[16px] leading-none">➕</span>
-  <span class="leading-none">新增備忘</span>
-</button>
-              </div>
+                <div class="flex gap-2">
+  <!-- ✅ 新增固定資訊（左） -->
+  <button
+    class="btn rounded-2xl px-4 py-2 text-[12px] font-semibold bg-white/70 hover:bg-white shadow-soft inline-flex items-center gap-2 leading-none tap"
+    @click="openAddInfoBlock()"
+  >
+    <span class="grid place-items-center w-5 h-5 text-[16px] leading-none">📌</span>
+    <span class="leading-none">新增固定資訊</span>
+  </button>
+
+  <!-- ✅ 新增備忘（右，原本的） -->
+  <button
+    class="btnPrimary rounded-2xl px-4 py-2 text-[12px] font-semibold shadow-soft inline-flex items-center gap-2 leading-none tap"
+    @click="openAddNote()"
+  >
+    <span class="grid place-items-center w-5 h-5 text-[16px] leading-none">➕</span>
+    <span class="leading-none">新增備忘</span>
+  </button>
+</div>
+
             </div>
 
             <div class="p-4 space-y-4">
-              <!-- Fixed info (editable) -->
-<div v-for="b in activeTrip.infoBlocks" :key="b.id"
-     class="rounded-3xl p-4 bg-white/70 border"
-     style="border-color: var(--line);">
+             <!-- Fixed info (editable) -->
+<div class="space-y-3">
 
-  <div class="flex items-start justify-between gap-2">
-    <div class="font-bold text-[15px]">{{ b.title }}</div>
-    <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
-            @click="editInfoBlock(b)">
-      ✏️
-    </button>
+  <!-- ✅ 空狀態提示（像自由備忘錄一樣） -->
+  <div v-if="(activeTrip.infoBlocks||[]).length===0"
+       class="rounded-2xl p-4 border bg-white/65 text-center hint"
+       style="border-color: var(--line);">
+    尚未新增固定資訊～可以放航班、地址、重要聯絡人、Wi-Fi 密碼 ✨
   </div>
 
-  <div class="mt-2 text-[13px] whitespace-pre-line">
-    {{ b.content }}
-  </div>
+  <div v-for="b in activeTrip.infoBlocks" :key="b.id"
+       class="rounded-3xl p-4 bg-white/70 border"
+       style="border-color: var(--line);">
 
-  <a v-if="b.link" class="mt-2 inline-block text-[12px] underline decoration-baby/60"
-     :href="b.link" target="_blank">
-    🔗 連結
-  </a>
+    <div class="flex items-start justify-between gap-2">
+      <div class="font-bold text-[15px]">{{ b.title }}</div>
+
+      <!-- ✅ 右側兩顆：編輯 + 刪除 -->
+      <div class="flex gap-2">
+        <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                @click="editInfoBlock(b)">
+          ✏️
+        </button>
+        <button class="btn rounded-2xl px-3 py-2 text-[12px] bg-white/70 hover:bg-white"
+                @click="removeInfoBlock(b.id)">
+          🗑️
+        </button>
+      </div>
+    </div>
+
+    <!-- ✅ 內容：空白時顯示提示 -->
+    <div class="mt-2 text-[13px] whitespace-pre-line"
+         v-if="(b.content||'').trim()">
+      {{ b.content }}
+    </div>
+    <div class="mt-2 text-[13px] hint"
+         v-else>
+      {{ b.hint || "可在這裡填寫固定資訊（例如：航班 / 地址 / 聯絡方式）" }}
+    </div>
+
+    <a v-if="b.link" class="mt-2 inline-block text-[12px] underline decoration-baby/60"
+       :href="b.link" target="_blank">
+      🔗 連結
+    </a>
+  </div>
 </div>
+
               <!-- Notes -->
               <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
                 <div class="flex items-center justify-between">
@@ -1131,7 +1169,7 @@ body::before{
         <div class="rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
           <div class="font-semibold">📝 名稱 / 日期</div>
           <div class="mt-2 grid gap-2">
-            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="activeTrip.title" placeholder="行程名稱（例如：首爾 ITZY 三巡）" @input="persist()">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="activeTrip.title" placeholder="行程名稱（例如：首爾/東京）" @input="persist()">
             <div class="grid grid-cols-2 gap-2">
               <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="activeTrip.startDate" @change="syncDaysAfterTripEdit()">
               <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="activeTrip.endDate" @change="syncDaysAfterTripEdit()">
@@ -1728,6 +1766,27 @@ addLinkRow(){
   this.editor.data.links ||= [];
   this.editor.data.links.push({ label:"", url:"" });
 },
+openAddInfoBlock(){
+  this.editor = {
+    open:true,
+    type:"infoBlock",
+    title:"➕ 新增固定資訊",
+    mode:"new",
+    refId:"",
+    data:{
+      id:this.uid(),
+      title:"",
+      content:"",
+      link:"",
+      hint:"可填：航班 / 地址 / Wi-Fi / 重要聯絡人 / 注意事項"
+    }
+  };
+},
+removeInfoBlock(id){
+  if(!confirm("刪除此固定資訊？")) return;
+  this.activeTrip.infoBlocks = (this.activeTrip.infoBlocks||[]).filter(x=>x.id!==id);
+  this.persist();
+},
 
   exportData(){
     const dataStr = JSON.stringify(this.store, null, 2);
@@ -1818,45 +1877,15 @@ removeTripBackground(){
   return [
     {
       id: this.uid(),
-      key: "concert",
-      title: "🎤 演唱會",
-      content: [
-        "ITZY 3RD WORLD TOUR ＜TUNNEL VISION＞ in SEOUL",
-        "Day1：2026/02/13 19:30 or 20:00 (KST)",
-        "Day2：2026/02/14 18:00 (KST)",
-        "Day3：2026/02/15 17:00 (KST)"
-      ].join("\n"),
-      link: ""
-    },
-    {
-      id: this.uid(),
-      key: "stay",
-      title: "🏠 住宿",
-      content: [
-        "入住：2026/02/11 → 02/15（四晚）",
-        "地址：서울특별시 강남구 역삼동 619-16（周圍 / 尚未明確門牌）"
-      ].join("\n"),
-      link: "https://www.airbnb.com.tw/rooms/1318488266686350601?adults=3&check_in=2026-02-11&check_out=2026-02-15"
-    },
-    {
-      id: this.uid(),
-      key: "flightDetail",
-      title: "✈️ 航班（詳細）",
-      content: [
-        "去程｜2026/02/11（三）",
-        "TPE 桃園機場 T1 12:25（台灣時間）",
-        "→ ICN 仁川機場 T2 15:50（韓國時間）",
-        "建議：出發前 2.5–3 小時到機場（看你行李/報到狀況）",
-        "",
-        "回程｜2026/02/16（一）",
-        "ICN 仁川機場 T2 09:00（韓國時間）",
-        "→ TPE 桃園機場 T1 11:00（台灣時間）",
-        "提醒：這班很早，前一晚行李先收好比較舒服 😴"
-      ].join("\n"),
-      link: ""
+      key: "flight",
+      title: "✈️ 航班",
+      content: "", // ✅ 預設空白
+      link: "",
+      hint: "可填：去回程時間、航班號、出入境注意事項（例：提早到機場、行李限制）"
     }
   ];
 },
+
 
 
     // ---------- time ----------
@@ -1954,17 +1983,17 @@ this.activeDay = ok ? this.activeDay : (days[0] || "_unscheduled");
     startCreateTrip(){
       const t = {
         id: this.uid(),
-        title: "首爾 ITZY 三巡",
+        title: "My Travel",
         avatar: "",
-        startDate: "2026-02-11",
-        endDate: "2026-02-16",
+        startDate: "YYYY-MM-DD",
+        endDate: "YYYY-MM-DD",
         city: "Seoul",
         people: [
           { id: this.uid(), name: "我", avatar: "" }
         ],
         flights: [
-          { id:this.uid(), type:"去程", date:"2026-02-11", depAirport:"TPE T1", arrAirport:"ICN T2", depTime:"12:25", arrTime:"15:50", flightNo:"", note:"" },
-          { id:this.uid(), type:"回程", date:"2026-02-16", depAirport:"ICN T2", arrAirport:"TPE T1", depTime:"09:00", arrTime:"11:00", flightNo:"", note:"前一晚行李先收好比較舒服 😴" }
+          { id:this.uid(), type:"去程", date:"YYYY-MM-DD", depAirport:"TPE T1", arrAirport:"TPE T2", depTime:"00:00", arrTime:"00:00", flightNo:"", note:"" },
+          { id:this.uid(), type:"回程", date:"YYYY-MM-DD", depAirport:"TPE T2", arrAirport:"TPE T1", depTime:"00:00", arrTime:"00:00", flightNo:"" }
         ],
         currencies: [
           { code:"TWD", name:"台幣", rateToTWD: 1 },
@@ -2565,17 +2594,31 @@ if(t==="infoBlock"){
   if(!data.title || !data.title.trim()){
     return alert("請填寫資訊標題");
   }
-  const idx = (this.activeTrip.infoBlocks||[])
-    .findIndex(x=>x.id===this.editor.refId);
 
-  if(idx >= 0){
-    this.activeTrip.infoBlocks[idx] = {
-      ...this.activeTrip.infoBlocks[idx],
+  this.activeTrip.infoBlocks ||= [];
+
+  if(this.editor.mode==="new"){
+    this.activeTrip.infoBlocks.unshift({
+      id: data.id || this.uid(),
+      key: data.key || "",
       title: data.title.trim(),
       content: data.content || "",
-      link: data.link || ""
-    };
+      link: data.link || "",
+      hint: data.hint || ""
+    });
+  }else{
+    const idx = this.activeTrip.infoBlocks.findIndex(x=>x.id===this.editor.refId);
+    if(idx >= 0){
+      this.activeTrip.infoBlocks[idx] = {
+        ...this.activeTrip.infoBlocks[idx],
+        title: data.title.trim(),
+        content: data.content || "",
+        link: data.link || "",
+        hint: data.hint || ""
+      };
+    }
   }
+
   this.persist();
   this.closeEditor();
   return;
