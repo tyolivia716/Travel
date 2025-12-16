@@ -1127,13 +1127,7 @@
       </div>
 
       <div class="mt-4 space-y-3 max-h-[70vh] overflow-auto pr-1">
-        <!-- plan/note -->
-        <template v-if="editor.type==='plan' || editor.type==='note'">
-          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='note'">
-            <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
-            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
-          </div>
-<!-- ✅ infoBlock -->
+        <!-- ✅ infoBlock -->
 <template v-if="editor.type==='infoBlock'">
   <input class="input rounded-2xl px-3 py-2 text-[13px]"
          v-model="editor.data.title" placeholder="標題（例：🎤 演唱會）">
@@ -1144,6 +1138,13 @@
   <textarea class="input rounded-2xl px-3 py-2 text-[13px] w-full min-h-[160px]"
             v-model="editor.data.content" placeholder="內容（可換行）"></textarea>
 </template>
+        <!-- plan/note -->
+        <template v-if="editor.type==='plan' || editor.type==='note'">
+          <div class="grid grid-cols-2 gap-2" v-if="editor.type==='note'">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" type="date" v-model="editor.data.date">
+            <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
+          </div>
+
 
           <div class="grid grid-cols-2 gap-2" v-if="editor.type==='plan'">
             <input class="input rounded-2xl px-3 py-2 text-[13px]" v-model="editor.data.time" placeholder="時間（例 11:30）">
@@ -2357,5 +2358,6 @@ if(t==="infoBlock"){
 </script>
 </body>
 </html>
+
 
 
