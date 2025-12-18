@@ -1068,49 +1068,127 @@ body::before{
           <div class="text-[13px] hint mt-1">建立新的旅遊計畫（可設定頭像/日期/人員/航班）</div>
         </button>
 <!-- Backup / Restore -->
-<div class="mt-4 rounded-3xl p-4 bg-white/70 border"
-     style="border-color: var(--line);">
-
+<div class="mt-4 rounded-3xl p-4 bg-white/70 border" style="border-color: var(--line);">
   <div class="font-semibold mb-2">💾 資料備份</div>
 
-  <div class="flex gap-2 flex-wrap">
-    <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft"
-            @click="exportData()">
-      ⬇️ 匯出備份
-    </button>
+  <!-- 匯出範圍 -->
+  <div class="rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+    <div class="text-[13px] font-semibold mb-2">⬇️ 匯出</div>
 
-    <label class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white shadow-soft cursor-pointer">
-      ⬆️ 匯入備份
-      <input type="file" accept=".json"
-             class="hidden"
-             @change="importData($event)">
-    </label>
+    <div class="flex gap-2 flex-wrap text-[12px]">
+      <label class="flex items-center gap-2">
+        <input type="radio" value="all" v-model="exportScope">
+        整個資料（所有行程）
+      </label>
+      <label class="flex items-center gap-2" v-if="activeTrip">
+        <input type="radio" value="trip" v-model="exportScope">
+        只匯出目前行程
+      </label>
+      <label class="flex items-center gap-2" v-if="activeTrip">
+        <input type="radio" value="parts" v-model="exportScope">
+        只匯出目前行程（部分）
+      </label>
+    </div>
+
+    <!-- 部分匯出勾選 -->
+    <div v-if="activeTrip && exportScope==='parts'" class="mt-3 grid grid-cols-2 gap-2 text-[12px]">
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.itinerary">🗓️ 行程</label>
+  <label class="flex items-center gap-2">
+  <input type="checkbox" v-model="exportParts.expenses">
+<span class="inline-flex items-center gap-1">💸 記帳
+    <span class="text-[10px] text-bluegray/90 whitespace-nowrap">
+      （建議連同人員匯出）</span></span></label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.fav">⭐ 收藏</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.infoBlocks">📌 固定資訊</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.notes">📝 備忘</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.luggage">🎒 行李</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.flights">✈️ 航班</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.shop">🛍️ 代購/購物</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.people">👥 人員</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.currencies">💱 幣別</label>
+      <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.favCategories">🏷️ 收藏類型</label>
+    </div>
+
+    <button class="btnPrimary rounded-2xl px-4 py-2 text-[13px] font-semibold shadow-soft mt-3 w-full"
+            @click="exportSmart()">
+      下載匯出檔
+    </button>
   </div>
 
-  <div class="text-[12px] text-gray-500 mt-2">
-    ⚠️ 匯入會覆蓋目前所有資料，請確認備份檔正確
+  <!-- 匯入 -->
+<div class="mt-3 rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+  <div class="text-[13px] font-semibold mb-2">⬆️ 匯入</div>
+
+  <label class="btn rounded-2xl px-4 py-2 text-[13px] bg-white/70 hover:bg-white shadow-soft cursor-pointer w-full text-center">
+    選擇 JSON 檔
+    <input type="file" accept=".json" class="hidden" @change="prepareImport($event)">
+  </label>
+
+  <div class="text-[12px] hint mt-2">
+    匯入後你可以選「匯入到哪個行程」，並選擇「新增」或「覆蓋」。
   </div>
 </div>
 
-        <button v-for="t in store.trips" :key="'m-'+t.id"
-                class="w-full text-left rounded-3xl p-4 bg-white/70 hover:bg-white border shadow-soft"
-                style="border-color: var(--line);"
-                @click="selectTrip(t.id); openTripCatalog=false">
-          <div class="flex gap-3 items-center">
-            <div class="w-12 h-12 rounded-2xl overflow-hidden border bg-white" style="border-color: var(--line);">
-              <img v-if="t.avatar" :src="t.avatar" class="w-full h-full object-cover" alt="">
-              <div v-else class="w-full h-full grid place-items-center">🧊</div>
-            </div>
-            <div class="min-w-0 flex-1">
-              <div class="font-bold truncate">{{ t.title }}</div>
-              <div class="text-[13px] hint mt-0.5">📅 {{ t.startDate }} → {{ t.endDate }}</div>
-            </div>
-            <div class="text-[20px]">›</div>
-          </div>
-        </button>
+<!-- 匯入選擇 modal（選行程 + 新增/覆蓋） -->
+<div v-if="importBox.open" class="fixed inset-0 z-[75] grid place-items-center px-4">
+  <div class="absolute inset-0 bg-black/25" @click="importBox.open=false"></div>
+
+  <div class="relative w-full max-w-[460px] rounded-[28px] bg-white shadow-soft border p-4"
+       style="border-color: var(--line);">
+    <div class="flex items-center justify-between">
+      <div class="font-bold text-[16px]">⬆️ 匯入</div>
+      <button class="btn rounded-2xl px-3 py-2 text-[13px] bg-white/70 hover:bg-white"
+              @click="importBox.open=false">✖</button>
+    </div>
+
+    <div class="mt-3 text-[13px]">
+      檔案：<span class="mono">{{ importBox.filename }}</span>
+    </div>
+    <div class="mt-1 text-[12px] hint">
+      偵測：{{ importBox.kindText }}
+    </div>
+
+    <!-- ✅ 選要匯入到哪個行程 -->
+    <div class="mt-4 rounded-2xl p-3 border bg-white/70" style="border-color: var(--line);">
+      <div class="text-[13px] font-semibold mb-2">🎯 匯入到哪個行程</div>
+
+      <select class="input rounded-2xl px-3 py-2 text-[13px] w-full"
+              v-model="importBox.targetTripId">
+        <option value="">（新增成一個新行程）</option>
+        <option v-for="t in store.trips" :key="'impT-'+t.id" :value="t.id">
+          {{ t.title }}
+        </option>
+      </select>
+
+      <div class="text-[12px] hint mt-2">
+        選「新行程」會用檔案內行程名稱建立；選既有行程就會匯入到那筆行程裡。
       </div>
     </div>
+
+    <!-- ✅ 匯入方式 -->
+    <div class="mt-3 grid gap-2">
+      <button class="btnPrimary rounded-2xl px-4 py-3 text-[13px] font-semibold shadow-soft"
+              @click="importAppend()">
+        ➕ 新增匯入（只新增，不檢查重複）
+      </button>
+
+      <button class="btn rounded-2xl px-4 py-3 text-[13px] bg-white/70 hover:bg-white"
+              style="color:#ef4444;"
+              @click="importOverwrite()">
+        ⚠️ 覆蓋匯入（覆蓋選擇的那筆行程/或整包資料）
+      </button>
+    </div>
+
+    <div class="text-[12px] hint mt-3">
+      「新增」會把匯入內容全部重新產生新 ID，避免跟你現有資料撞到（重複你再自己刪就好）。
+    </div>
   </div>
+</div>
+</div>
+  </div>
+</div>
+</div>
+
 
   <!-- Trip settings -->
   <div v-if="openTripSettings" class="fixed inset-0 z-[60] grid place-items-center px-4">
@@ -1779,49 +1857,78 @@ function loadStore(){
 
 createApp({
   data(){
-    return {
-      tab: "plan",
-      nowText: "",
-     store: loadStore(),
-      openTripCatalog: false,
-      openTripSettings: false,
-      openCurrencyManager: false,
-      openFavCategoryManager: false,
+  return {
+    tab: "plan",
+    nowText: "",
+    store: loadStore(),
 
-      activeTripId: "",
-      activeDay: "",
-      selectedExpenseDay: "",
-      favFilter: "",
+    // ===== Modal / Page =====
+    openTripCatalog: false,
+    openTripSettings: false,
+    openCurrencyManager: false,
+    openFavCategoryManager: false,
 
-      editor: { open:false, type:"", title:"", data:{}, mode:"new", refId:"" },
+    // ===== Active 狀態 =====
+    activeTripId: "",
+    activeDay: "",
+    selectedExpenseDay: "",
+    favFilter: "",
 
-      // currencies add
-      newCur: { code:"", name:"", rateToTWD: 1 },
+    // ===== 通用編輯器 =====
+    editor: { open:false, type:"", title:"", data:{}, mode:"new", refId:"" },
 
-      // fav category add
-      newFavCategory: "",
+    // ===== 💾 匯出 / 匯入 UI 狀態（A）=====
+    exportScope: "all", // all | trip | parts
+    exportParts: {
+      itinerary: true,
+      expenses: true,
+      fav: true,
+      infoBlocks: true,
+      notes: true,
+      luggage: true,
+      flights: true,
+      people: false,
+      currencies: false,
+      favCategories: false,
+      shop: false
+    },
+    importBox: {
+  open: false,
+  payload: null,
+  filename: "",
+  kind: "",        // "store" | "trip" | "oldStore"
+  kindText: "",    // 顯示用
+  targetTripId: "" // "" 代表「新增成新行程」，有值代表匯入到該行程
+},
 
-        // ✅ 收藏類型拖曳排序（Sortable instance）
-      favCatSortable: null,
+    // ===== currencies add =====
+    newCur: { code:"", name:"", rateToTWD: 1 },
 
-      // weather
-      weatherQuery: "",
-      weatherStatus: "",
-      weather: { cityName:"", updatedAt:"", current:null, daily:[] },
+    // ===== fav category add =====
+    newFavCategory: "",
 
-      // cropper
-      crop: {
-        open:false,
-        imgSrc:"",
-        scale: 1.4,
-        offX: 0,
-        offY: 0,
-        dragging:false,
-        px:0, py:0,
-        callback: null
-      }
+    // ===== 收藏類型拖曳排序 =====
+    favCatSortable: null,
+
+    // ===== weather =====
+    weatherQuery: "",
+    weatherStatus: "",
+    weather: { cityName:"", updatedAt:"", current:null, daily:[] },
+
+    // ===== cropper =====
+    crop: {
+      open:false,
+      imgSrc:"",
+      scale: 1.4,
+      offX: 0,
+      offY: 0,
+      dragging:false,
+      px:0, py:0,
+      callback: null
     }
-  },
+  }
+},
+
 watch:{
   openFavCategoryManager(v){
     if(v){
@@ -1847,6 +1954,7 @@ watch:{
     }
   },
  methods:{
+
 async fileToJpegDataURL(file, maxSize=1200, quality=0.85){
   const imgURL = await this.readFileAsDataURL(file);
   const img = new Image();
@@ -1990,6 +2098,318 @@ removeInfoBlock(id){
   this.activeTrip.infoBlocks = (this.activeTrip.infoBlocks||[]).filter(x=>x.id!==id);
   this.persist();
 },
+exportSmart(){
+  // 組匯出 payload（含 meta）
+  const meta = {
+    app: "Planary",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    scope: this.exportScope
+  };
+
+  let payload = null;
+
+  if(this.exportScope === "all"){
+    payload = { meta, store: this.store };
+
+  }else if(this.exportScope === "trip"){
+    if(!this.activeTrip) return alert("請先進入一個行程再匯出");
+    payload = { meta, trip: this.activeTrip };
+
+  }else if(this.exportScope === "parts"){
+    if(!this.activeTrip) return alert("請先進入一個行程再匯出");
+
+    const t = JSON.parse(JSON.stringify(this.activeTrip));
+    // 只保留勾選的部分
+    if(!this.exportParts.itinerary) t.itinerary = { _unscheduled: [] };
+    if(!this.exportParts.expenses) t.expenses = [];
+    if(!this.exportParts.fav) t.fav = [];
+    if(!this.exportParts.infoBlocks) t.infoBlocks = [];
+    if(!this.exportParts.notes) t.notes = [];
+    if(!this.exportParts.luggage) t.luggage = [];
+    if(!this.exportParts.flights) t.flights = [];
+    if(!this.exportParts.shop) t.shop = [];
+
+    if(!this.exportParts.people) t.people = [];
+    if(!this.exportParts.currencies) t.currencies = [];
+    if(!this.exportParts.favCategories) t.favCategories = [];
+
+    payload = { meta, trip: t };
+  }
+
+  const dataStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  const nameBase = (this.exportScope==="all") ? "planary_all" : (this.activeTrip?.title || "planary_trip");
+  a.download = `${nameBase}_backup.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+},
+
+async prepareImport(event){
+  const file = event.target.files?.[0];
+  if(!file) return;
+
+  try{
+    const text = await file.text();
+    const payload = JSON.parse(text);
+
+    // 兼容格式：
+    // 1) 舊：{ trips:[...] }
+    // 2) 新：{ meta, store:{trips:[...]} }
+    // 3) 新：{ meta, trip:{...} }
+    const looksOldStore = payload && Array.isArray(payload.trips);
+    const looksNewStore = payload && payload.store && Array.isArray(payload.store.trips);
+    const looksTrip = payload && payload.trip && payload.trip.id;
+
+    if(!looksOldStore && !looksNewStore && !looksTrip){
+      alert("檔案格式不正確（不是 Planary 匯出檔）");
+      event.target.value = "";
+      return;
+    }
+
+    let kind = "";
+    let kindText = "";
+    if(looksTrip){
+      kind = "trip";
+      kindText = "單一行程（trip）";
+    }else if(looksNewStore){
+      kind = "store";
+      kindText = "整包資料（store）";
+    }else{
+      kind = "oldStore";
+      kindText = "舊版整包資料（trips）";
+    }
+
+    // 預設目標：如果目前有在某行程內 → 預設匯入到這筆；沒有就預設「新行程」
+    const defaultTarget = this.activeTripId || "";
+
+    this.importBox = {
+      open: true,
+      payload,
+      filename: file.name,
+      kind,
+      kindText,
+      targetTripId: defaultTarget
+    };
+
+  }catch(e){
+    alert("讀取失敗，請確認檔案是否為正確 JSON");
+    console.error(e);
+  }
+
+  event.target.value = "";
+},
+
+// ========= 核心：把 payload 轉成「要匯入的 trips 陣列」 =========
+getIncomingTripsFromPayload(p){
+  if(!p) return [];
+  if(Array.isArray(p.trips)) return p.trips;
+  if(p.store && Array.isArray(p.store.trips)) return p.store.trips;
+  if(p.trip && p.trip.id) return [p.trip];
+  return [];
+},
+
+// ========= 新增匯入：只新增，不管重複（全部換新 id 避免撞） =========
+importAppend(){
+  const p = this.importBox.payload;
+  if(!p) return;
+
+  const incomingTrips = this.getIncomingTripsFromPayload(p);
+  if(!incomingTrips.length){
+    alert("檔案內沒有可匯入的資料");
+    return;
+  }
+
+  const targetId = this.importBox.targetTripId || "";
+
+  // A) 選「新行程」：每個 incoming trip 都直接新增成新行程（並換新 trip.id）
+  if(!targetId){
+    for(const t of incomingTrips){
+      const clone = JSON.parse(JSON.stringify(t));
+      this.ensureTripShape(clone);
+
+      // ✅ 整個行程換新 id，且行程內全部 item 也換新 id
+      clone.id = this.uid();
+      this.remapTripAllItemIds(clone);
+
+      this.store.trips.unshift(clone);
+    }
+
+    this.persist();
+    this.importBox.open = false;
+    alert("匯入完成（新增成新行程）");
+    return;
+  }
+
+  // B) 選既有行程：把 incoming 的內容「附加」到這個行程
+  const target = this.store.trips.find(t=>t.id===targetId);
+  if(!target){
+    alert("找不到目標行程，請重新選擇");
+    return;
+  }
+  this.ensureTripShape(target);
+
+  // 多個 trip 匯入到同一個目標：就全部把內容加進去（你要的「直接新增」）
+  for(const srcTrip of incomingTrips){
+    const inc = JSON.parse(JSON.stringify(srcTrip));
+    this.ensureTripShape(inc);
+
+    // ✅ 重要：把匯入資料內的所有 item id 換新（避免 key 撞 / 編輯時找錯）
+    this.remapTripAllItemIds(inc);
+
+    this.appendTripParts(target, inc);
+  }
+
+  this.persist();
+  this.importBox.open = false;
+  alert("匯入完成（新增到指定行程）");
+},
+
+// ========= 覆蓋匯入：覆蓋「選擇的行程」或「整包 store」 =========
+importOverwrite(){
+  const p = this.importBox.payload;
+  if(!p) return;
+
+  const kind = this.importBox.kind;
+  const targetId = this.importBox.targetTripId || "";
+
+  // 1) 整包 store：覆蓋全部（危險操作）
+  if(kind === "store" || kind === "oldStore"){
+    if(!confirm("確定要覆蓋匯入「整包資料」？你目前所有資料都會被取代。建議先匯出備份。")) return;
+
+    if(Array.isArray(p.trips)){
+      this.store = p;
+    }else if(p.store && Array.isArray(p.store.trips)){
+      this.store = p.store;
+    }
+
+    // 進來後保底 shape
+    for(const t of (this.store.trips||[])) this.ensureTripShape(t);
+
+    this.persist();
+    this.importBox.open = false;
+    alert("匯入完成（覆蓋全部資料）");
+    return;
+  }
+
+  // 2) 單一 trip：覆蓋「某一筆行程」
+  const incomingTrips = this.getIncomingTripsFromPayload(p);
+  const incoming = incomingTrips[0];
+  if(!incoming || !incoming.id){
+    alert("檔案內沒有可覆蓋的行程資料");
+    return;
+  }
+
+  if(!targetId){
+    // 覆蓋但目標選「新行程」→ 等同新增一筆（用檔案的行程內容建立）
+    const clone = JSON.parse(JSON.stringify(incoming));
+    this.ensureTripShape(clone);
+    clone.id = this.uid(); // 新行程
+    this.persist();
+    this.store.trips.unshift(clone);
+    this.importBox.open = false;
+    alert("匯入完成（覆蓋=建立新行程）");
+    return;
+  }
+
+  const targetIdx = this.store.trips.findIndex(t=>t.id===targetId);
+  if(targetIdx < 0){
+    alert("找不到目標行程，請重新選擇");
+    return;
+  }
+
+  if(!confirm("確定要覆蓋匯入？會用檔案內容取代「你選的那筆行程」的資料。建議先匯出備份。")) return;
+
+  const clone = JSON.parse(JSON.stringify(incoming));
+  this.ensureTripShape(clone);
+
+  // ✅ 覆蓋：保留「目標行程 id」，用檔案內容全面取代其餘欄位
+  clone.id = targetId;
+
+  this.store.trips.splice(targetIdx, 1, clone);
+
+  // 若正在該行程內，刷新
+  if(this.activeTripId === targetId){
+    this.afterTripSelected();
+  }
+
+  this.persist();
+  this.importBox.open = false;
+  alert("匯入完成（覆蓋指定行程）");
+},
+
+// ========= 把 inc 的內容附加到 target（新增模式用） =========
+appendTripParts(target, inc){
+  // 你想要「直接新增」：全部 concat，重複不管
+  target.people = (target.people||[]).concat(inc.people||[]);
+  target.flights = (target.flights||[]).concat(inc.flights||[]);
+  target.luggage = (target.luggage||[]).concat(inc.luggage||[]);
+  target.notes = (target.notes||[]).concat(inc.notes||[]);
+  target.infoBlocks = (target.infoBlocks||[]).concat(inc.infoBlocks||[]);
+  target.expenses = (target.expenses||[]).concat(inc.expenses||[]);
+  target.fav = (target.fav||[]).concat(inc.fav||[]);
+  target.shop = (target.shop||[]).concat(inc.shop||[]);
+
+  // favCategories / currencies：我仍做「去空白」＋「去重」避免 UI 很亂（你要純 concat 也行）
+  const fc = (target.favCategories||[]).concat(inc.favCategories||[]);
+  target.favCategories = fc.map(x=>String(x||"").trim()).filter(Boolean);
+
+  const curMap = new Map();
+  for(const c of (target.currencies||[])){
+    if(c?.code) curMap.set(c.code, c);
+  }
+  for(const c of (inc.currencies||[])){
+    if(c?.code && !curMap.has(c.code)) curMap.set(c.code, c);
+  }
+  target.currencies = Array.from(curMap.values());
+
+  // itinerary：逐天 concat（含 _unscheduled）
+  target.itinerary ||= { _unscheduled: [] };
+  inc.itinerary ||= { _unscheduled: [] };
+
+  const keys = new Set([...Object.keys(target.itinerary), ...Object.keys(inc.itinerary)]);
+  for(const k of keys){
+    target.itinerary[k] ||= [];
+    const add = inc.itinerary[k] || [];
+    target.itinerary[k] = target.itinerary[k].concat(add);
+  }
+},
+
+// ========= 把「行程內所有 items」都換新 id（新增模式必做） =========
+remapTripAllItemIds(trip){
+  const newId = ()=>this.uid();
+
+  const remapArr = (arr)=>{
+    if(!Array.isArray(arr)) return;
+    for(const it of arr){
+      if(it && typeof it === "object"){
+        it.id = newId();
+      }
+    }
+  };
+
+  remapArr(trip.people);
+  remapArr(trip.flights);
+  remapArr(trip.luggage);
+  remapArr(trip.notes);
+  remapArr(trip.infoBlocks);
+  remapArr(trip.expenses);
+  remapArr(trip.fav);
+  remapArr(trip.shop);
+
+  // itinerary 每天都是陣列
+  trip.itinerary ||= { _unscheduled: [] };
+  for(const k of Object.keys(trip.itinerary)){
+    remapArr(trip.itinerary[k]);
+  }
+},
+
   exportData(){
     const dataStr = JSON.stringify(this.store, null, 2);
     const blob = new Blob([dataStr], { type: "application/json" });
@@ -3154,4 +3574,4 @@ data.links = (data.links||[])
 </script>
 </body>
 </html>
-
+ 
