@@ -1091,13 +1091,14 @@ body::before{
     </div>
 
     <!-- 部分匯出勾選 -->
-    <div v-if="activeTrip && exportScope==='parts'" class="mt-3 grid grid-cols-2 gap-2 text-[12px]">
+    <div v-if="activeTrip && exportScope==='parts'"
+     class="mt-3 grid grid-cols-2 gap-y-2 gap-x-0.5 text-[12px]">
       <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.itinerary">🗓️ 行程</label>
   <label class="flex items-center gap-2">
   <input type="checkbox" v-model="exportParts.expenses">
-<span class="inline-flex items-center gap-1">💸 記帳
-    <span class="text-[10px] text-bluegray/90 whitespace-nowrap">
-      （建議連同人員匯出）</span></span></label>
+  <span class="whitespace-nowrap">
+    💸 記帳<span class="text-[10px] text-bluegray/90">（建議連同人員匯出）</span>
+  </span></label>
       <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.fav">⭐ 收藏</label>
       <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.infoBlocks">📌 固定資訊</label>
       <label class="flex items-center gap-2"><input type="checkbox" v-model="exportParts.notes">📝 備忘</label>
@@ -1887,10 +1888,10 @@ createApp({
       notes: true,
       luggage: true,
       flights: true,
-      people: false,
-      currencies: false,
-      favCategories: false,
-      shop: false
+      people: true,
+      currencies: true,
+      favCategories: true,
+      shop: true
     },
     importBox: {
   open: false,
